@@ -521,12 +521,13 @@ function projectGeoFeatures(features, width, height, padding) {
     const points = polygons.flat(2);
     const center = averageProjected(points, project);
     const fullName = String(feature.properties?.name || '');
+    const override = LABEL_OVERRIDES[normalizeProvinceName(fullName)] || null;
     return {
       name: fullName,
       shortName: shortProvinceName(fullName),
       path: d,
-      labelX: center[0],
-      labelY: center[1]
+      labelX: override ? override[0] : center[0],
+      labelY: override ? override[1] : center[1]
     };
   });
 
@@ -572,6 +573,10 @@ function shortProvinceName(name) {
 function normalizeProvinceName(name) {
   return shortProvinceName(name).trim();
 }
+
+const LABEL_OVERRIDES = {
+  海南: [608, 560]
+};
 
 function guessProvince(place) {
   const text = String(place || '');

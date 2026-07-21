@@ -30,6 +30,7 @@ const publishTravelBtn = document.getElementById('publishTravelBtn');
 const travelMap = document.getElementById('travelMap');
 const travelList = document.getElementById('travelList');
 let chinaMapChart = null;
+let mapRuntimeReady = false;
 
 const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
@@ -73,6 +74,11 @@ function switchPage(name) {
   currentPage = name;
   feedPage.hidden = name !== 'feed';
   travelPage.hidden = name !== 'travel';
+  if (name === 'travel') {
+    setTimeout(() => {
+      if (chinaMapChart) chinaMapChart.resize();
+    }, 60);
+  }
 }
 
 async function login() {
@@ -174,7 +180,7 @@ async function publishTravel() {
 
   const resolved = resolveChinaLocation(place);
   if (!resolved) {
-    alert('暂时无法识别该地点，请填写更具体的中国省市区名称（如：四川成都武侯区）');
+    alert('是不是记错地方了？\n请重新填写更准确的省份/城市/区县名称。');
     return;
   }
 
@@ -312,7 +318,7 @@ async function loadTravels() {
   const travels = await request('/travels', { method: 'GET' });
   if (!travels) return;
 
-  renderChinaMap(travels);
+  await renderChinaMap(travels);
   travelList.innerHTML = '';
 
   travels.forEach(item => {
@@ -401,9 +407,10 @@ function lngToX(lng) {
   return Math.min(100, Math.max(0, ((value + 180) / 360) * 100));
 }
 
-function renderChinaMap(travels) {
-  if (!window.echarts) {
-    travelMap.innerHTML = '<p class="tip">地图加载失败，请检查网络。</p>';
+async function renderChinaMap(travels) {
+  const ready = await ensureMapRuntimeReady();
+  if (!ready || !window.echarts) {
+    travelMap.innerHTML = '<p class="tip">地图加载失败，请检查网络（可尝试切换网络后刷新）。</p>';
     return;
   }
 
@@ -471,6 +478,67 @@ function renderChinaMap(travels) {
       }
     ]
   });
+}
+
+async function ensureMapRuntimeReady() {
+  if (mapRuntimeReady && window.echarts?.getMap('china')) {
+    return true;
+  }
+
+  if (!window.echarts) {
+    const loaded = await loadScriptByFallback([
+      'https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js',
+      'https://fastly.jsdelivr.net/npm/echarts@5/dist/echarts.min.js',
+      'https://unpkg.com/echarts@5/dist/echarts.min.js'
+    ]);
+    if (!loaded) return false;
+  }
+
+  if (!window.echarts.getMap('china')) {
+    const geoJson = await loadChinaGeoJsonByFallback([
+      'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
+      'https://fastly.jsdelivr.net/npm/echarts@5/map/json/china.json',
+      'https://unpkg.com/echarts@5/map/json/china.json'
+    ]);
+    if (!geoJson) return false;
+    window.echarts.registerMap('china', geoJson);
+  }
+
+  mapRuntimeReady = true;
+  return true;
+}
+
+async function loadScriptByFallback(urls) {
+  for (const url of urls) {
+    const ok = await loadScript(url);
+    if (ok) return true;
+  }
+  return false;
+}
+
+function loadScript(url) {
+  return new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+async function loadChinaGeoJsonByFallback(urls) {
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (data?.features?.length) return data;
+    } catch {
+      // 尝试下一个数据源
+    }
+  }
+  return null;
 }
 
 function guessProvince(place) {

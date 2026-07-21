@@ -203,7 +203,8 @@ button:hover { transform: translateY(-1px); }
 .travel-map {
   position: relative;
   width: 100%;
-  height: 320px;
+  height: auto;
+  aspect-ratio: 640 / 454;
   border: 1px solid var(--line);
   border-radius: 18px;
   margin-top: 14px;
@@ -221,15 +222,14 @@ button:hover { transform: translateY(-1px); }
 
 .fallback-map-image {
   position: absolute;
-  left: 2.5%;
-  top: 2.5%;
-  width: 95%;
-  height: 95%;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
   background-image: url('./mapcn.jpeg');
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 100% 100%;
-  border-radius: 12px;
+  background-size: contain;
   z-index: 1;
 }
 
@@ -313,8 +313,4 @@ button:hover { transform: translateY(-1px); }
 
 @media (min-width: 1180px) {
   .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-
-  .travel-map {
-    height: 480px;
-  }
 }

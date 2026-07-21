@@ -453,8 +453,8 @@ function mapLngToX(lng) {
   const maxLng = 135;
   const value = Number(lng);
   if (Number.isNaN(value)) return 50;
-  const normalized = Math.min(0.93, Math.max(0.09, (value - minLng) / (maxLng - minLng)));
-  return 2.5 + normalized * 95;
+  const normalized = (value - minLng) / (maxLng - minLng);
+  return Math.min(92, Math.max(8, normalized * 100));
 }
 
 function mapLatToY(lat) {
@@ -462,8 +462,8 @@ function mapLatToY(lat) {
   const maxLat = 54;
   const value = Number(lat);
   if (Number.isNaN(value)) return 50;
-  const normalized = Math.min(0.86, Math.max(0.14, (maxLat - value) / (maxLat - minLat)));
-  return 2.5 + normalized * 95;
+  const normalized = (maxLat - value) / (maxLat - minLat);
+  return Math.min(88, Math.max(10, normalized * 100));
 }
 
 async function ensureMapRuntimeReady() {

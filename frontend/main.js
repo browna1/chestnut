@@ -414,80 +414,7 @@ function lngToX(lng) {
 }
 
 async function renderChinaMap(travels) {
-  const ready = await ensureMapRuntimeReady();
-  if (!ready || !window.echarts) {
-    renderStaticChinaMap(travels);
-    return;
-  }
-
-  try {
-    if (!chinaMapChart) {
-      chinaMapChart = window.echarts.init(travelMap);
-    }
-
-    const points = travels.map(item => ({
-      name: item.place,
-      value: [Number(item.lng), Number(item.lat), item.place],
-      author: item.author,
-      province: guessProvince(item.place),
-      date: item.date || ''
-    }));
-
-    chinaMapChart.setOption({
-      tooltip: {
-        trigger: 'item',
-        formatter(params) {
-          const data = params.data || {};
-          if (params.seriesType === 'map') {
-            return `${params.name}`;
-          }
-          return `${data.value?.[2] || data.name}<br/>省份：${data.province || '未知'}<br/>作者：${data.author || ''}${data.date ? `<br/>日期：${data.date}` : ''}`;
-        }
-      },
-      geo: {
-        map: 'china',
-        roam: true,
-        zoom: 1.05,
-        label: {
-          show: true,
-          fontSize: 10,
-          color: '#765846'
-        },
-        itemStyle: {
-          areaColor: '#f9e6d4',
-          borderColor: '#c89573',
-          borderWidth: 1
-        },
-        emphasis: {
-          label: { color: '#6a3a1f' },
-          itemStyle: { areaColor: '#f3c8a7' }
-        }
-      },
-      series: [
-        {
-          type: 'scatter',
-          coordinateSystem: 'geo',
-          symbolSize: 12,
-          itemStyle: {
-            color: '#a54f20'
-          },
-          label: {
-            show: true,
-            formatter: param => param.data?.name || '',
-            position: 'right',
-            fontSize: 11,
-            color: '#5e3f2d',
-            backgroundColor: 'rgba(255,255,255,0.85)',
-            borderRadius: 5,
-            padding: [2, 6]
-          },
-          data: points
-        }
-      ]
-    });
-  } catch {
-    renderStaticChinaMap(travels);
-  }
+  renderStaticChinaMap(travels);
 }
 
 function renderStaticChinaMap(travels) {
@@ -511,8 +438,12 @@ function renderStaticChinaMap(travels) {
 
   travelMap.innerHTML = `
     <div class="fallback-map">
-      <div class="fallback-title">中国地图静态模式（网络受限时自动启用）</div>
-      <div class="fallback-shape"></div>
+      <svg class="china-svg" viewBox="0 0 1000 760" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <path class="china-main" d="M129,174 L178,134 L241,125 L284,104 L353,98 L408,123 L469,110 L533,124 L594,112 L651,131 L713,126 L776,147 L816,179 L854,216 L894,266 L908,324 L896,378 L922,434 L905,486 L873,532 L820,581 L752,617 L675,651 L592,667 L501,678 L431,660 L362,666 L294,647 L244,621 L211,588 L176,552 L146,516 L121,472 L104,418 L97,364 L95,306 L104,255 Z" />
+        <path class="china-main" d="M823,607 L867,593 L898,615 L894,649 L852,661 L824,638 Z" />
+        <path class="china-stroke" d="M129,174 L178,134 L241,125 L284,104 L353,98 L408,123 L469,110 L533,124 L594,112 L651,131 L713,126 L776,147 L816,179 L854,216 L894,266 L908,324 L896,378 L922,434 L905,486 L873,532 L820,581 L752,617 L675,651 L592,667 L501,678 L431,660 L362,666 L294,647 L244,621 L211,588 L176,552 L146,516 L121,472 L104,418 L97,364 L95,306 L104,255 Z" />
+        <path class="china-stroke" d="M823,607 L867,593 L898,615 L894,649 L852,661 L824,638 Z" />
+      </svg>
       ${markers}
     </div>
   `;
@@ -523,7 +454,7 @@ function mapLngToX(lng) {
   const maxLng = 135;
   const value = Number(lng);
   if (Number.isNaN(value)) return 50;
-  return Math.min(96, Math.max(4, ((value - minLng) / (maxLng - minLng)) * 100));
+  return Math.min(93, Math.max(9, ((value - minLng) / (maxLng - minLng)) * 100));
 }
 
 function mapLatToY(lat) {
@@ -531,7 +462,7 @@ function mapLatToY(lat) {
   const maxLat = 54;
   const value = Number(lat);
   if (Number.isNaN(value)) return 50;
-  return Math.min(95, Math.max(5, ((maxLat - value) / (maxLat - minLat)) * 100));
+  return Math.min(86, Math.max(14, ((maxLat - value) / (maxLat - minLat)) * 100));
 }
 
 async function ensureMapRuntimeReady() {

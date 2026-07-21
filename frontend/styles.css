@@ -209,30 +209,27 @@ button:hover { transform: translateY(-1px); }
   width: 100%;
   height: 100%;
   border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 251, 245, 0.96), rgba(255, 241, 227, 0.96)),
-    repeating-linear-gradient(0deg, transparent 0 24px, rgba(141, 100, 74, 0.06) 25px),
-    repeating-linear-gradient(90deg, transparent 0 24px, rgba(141, 100, 74, 0.06) 25px);
+  background: linear-gradient(180deg, rgba(255, 251, 245, 0.96), rgba(255, 241, 227, 0.96));
 }
 
-.fallback-title {
+.china-svg {
   position: absolute;
-  top: 10px;
-  left: 12px;
-  font-size: 12px;
-  color: #7a6355;
-  z-index: 2;
+  left: 5%;
+  top: 6%;
+  width: 90%;
+  height: 88%;
+  z-index: 1;
 }
 
-.fallback-shape {
-  position: absolute;
-  left: 6%;
-  top: 11%;
-  width: 88%;
-  height: 78%;
-  border-radius: 38% 36% 42% 34% / 40% 34% 39% 35%;
-  border: 2px solid rgba(160, 92, 51, 0.48);
-  background: rgba(226, 174, 139, 0.18);
+.china-main {
+  fill: rgba(226, 174, 139, 0.22);
+}
+
+.china-stroke {
+  fill: none;
+  stroke: rgba(160, 92, 51, 0.55);
+  stroke-width: 7;
+  stroke-linejoin: round;
 }
 
 .fallback-marker {

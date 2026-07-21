@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: chestnut-life-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    autoDeploy: true

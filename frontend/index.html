@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>栗子生活馆</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>🌰 栗子生活馆</h1>
+      <p>记录猫咪、生活与旅行的小世界</p>
+    </div>
+    <div class="auth-area">
+      <span id="viewerState">当前：游客</span>
+      <button id="goFeedBtn" class="ghost">动态</button>
+      <button id="goTravelBtn" class="ghost">旅行地图</button>
+      <button id="loginBtn">登录</button>
+      <button id="logoutBtn" class="ghost" hidden>退出</button>
+    </div>
+  </header>
+
+  <section id="publishSection" class="card" hidden>
+    <h2>发布新动态</h2>
+    <div class="form-grid">
+      <input id="titleInput" placeholder="标题，如：栗子今天又粘人啦" />
+      <input id="locationInput" placeholder="地点，如：上海、杭州西湖" />
+      <input id="topicInput" placeholder="主题，如：猫咪日常 / 旅行" />
+      <textarea id="contentInput" placeholder="写下今天的故事..."></textarea>
+      <input id="mediaInput" type="file" multiple accept="image/*,video/*" />
+      <button id="publishBtn">发布内容</button>
+    </div>
+    <p class="tip">支持图片和视频上传。仅 `chestnut` 与管理员可发布。</p>
+  </section>
+
+  <main id="feedPage">
+    <section class="feed-title">
+      <h2>最新动态</h2>
+      <button id="refreshBtn" class="ghost">刷新</button>
+    </section>
+    <section id="feed" class="feed"></section>
+  </main>
+
+  <section id="travelPage" class="card" hidden>
+    <section class="feed-title">
+      <h2>旅行地图页</h2>
+      <button id="travelRefreshBtn" class="ghost">刷新地点</button>
+    </section>
+
+    <section id="travelPublishSection" hidden>
+      <h3>新增旅行地点</h3>
+      <div class="form-grid">
+        <input id="travelPlaceInput" placeholder="地点名，如：京都清水寺" />
+        <input id="travelCountryInput" placeholder="国家/地区" />
+        <input id="travelDateInput" type="date" />
+        <input id="travelLatInput" type="number" step="0.000001" placeholder="纬度，如：35.0116" />
+        <input id="travelLngInput" type="number" step="0.000001" placeholder="经度，如：135.7681" />
+        <textarea id="travelNoteInput" placeholder="旅行小记..."></textarea>
+        <button id="publishTravelBtn">发布旅行地点</button>
+      </div>
+    </section>
+
+    <div id="travelMap" class="travel-map"></div>
+    <div id="travelList" class="travel-list"></div>
+  </section>
+
+  <dialog id="loginDialog">
+    <h3>账号登录</h3>
+    <input id="usernameInput" placeholder="用户名" />
+    <input id="passwordInput" type="password" placeholder="密码" />
+    <div class="dialog-actions">
+      <button id="confirmLoginBtn">登录</button>
+      <button id="cancelLoginBtn" class="ghost">取消</button>
+    </div>
+    <p class="tip">可用账号：`chestnut` / `susususu`，以及管理员账号。</p>
+  </dialog>
+
+  <script src="./config.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>

@@ -16,8 +16,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || '';
+const SUPABASE_BASE_URL = normalizeSupabaseBaseUrl(SUPABASE_URL);
 
-const useRemotePersistence = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const useRemotePersistence = Boolean(SUPABASE_BASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 const useCloudinaryUpload = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
 
 const sessions = new Map();
@@ -696,7 +697,7 @@ async function deleteTravelRecord(travelId) {
 
 async function selectRows(table, select = '*', query = '') {
   const suffix = query ? `&${query}` : '';
-  return supabaseRequest(`/rest/v1/${table}?select=${encodeURIComponent(select)}${suffix}`, { method: 'GET' });
+  return supabaseRequest(`/rest/v1/${table}?select=${select}${suffix}`, { method: 'GET' });
 }
 
 async function insertRow(table, payload) {
@@ -725,7 +726,7 @@ async function deleteRow(table, filterQuery) {
 }
 
 async function supabaseRequest(pathname, options) {
-  const response = await fetch(`${SUPABASE_URL}${pathname}`, {
+  const response = await fetch(`${SUPABASE_BASE_URL}${pathname}`, {
     method: options.method,
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -744,6 +745,18 @@ async function supabaseRequest(pathname, options) {
     throw new Error(payload.message || payload.error || `Supabase 请求失败(${response.status})`);
   }
   return payload;
+}
+
+function normalizeSupabaseBaseUrl(rawUrl) {
+  const value = String(rawUrl || '').trim();
+  if (!value) return '';
+
+  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  let normalized = withProtocol.replace(/\/+$/, '');
+
+  normalized = normalized.replace(/\/rest\/v1(?:\/.*)?$/i, '');
+  normalized = normalized.replace(/\/+$/, '');
+  return normalized;
 }
 
 function safeJson(text) {

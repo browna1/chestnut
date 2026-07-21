@@ -64,6 +64,8 @@ window.addEventListener('resize', () => {
   if (chinaMapChart) chinaMapChart.resize();
 });
 
+switchPage(currentPage);
+
 function syncView() {
   const isAuth = Boolean(state.token);
   const canPublish = ['uploader', 'admin'].includes(state.role);
@@ -80,6 +82,8 @@ function switchPage(name) {
   currentPage = name;
   feedPage.hidden = name !== 'feed';
   travelPage.hidden = name !== 'travel';
+  goFeedBtn.classList.toggle('active-tab', name === 'feed');
+  goTravelBtn.classList.toggle('active-tab', name === 'travel');
   if (name === 'travel') {
     setTimeout(() => {
       if (chinaMapChart) chinaMapChart.resize();
@@ -438,12 +442,7 @@ function renderStaticChinaMap(travels) {
 
   travelMap.innerHTML = `
     <div class="fallback-map">
-      <svg class="china-svg" viewBox="0 0 1000 760" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-        <path class="china-main" d="M129,174 L178,134 L241,125 L284,104 L353,98 L408,123 L469,110 L533,124 L594,112 L651,131 L713,126 L776,147 L816,179 L854,216 L894,266 L908,324 L896,378 L922,434 L905,486 L873,532 L820,581 L752,617 L675,651 L592,667 L501,678 L431,660 L362,666 L294,647 L244,621 L211,588 L176,552 L146,516 L121,472 L104,418 L97,364 L95,306 L104,255 Z" />
-        <path class="china-main" d="M823,607 L867,593 L898,615 L894,649 L852,661 L824,638 Z" />
-        <path class="china-stroke" d="M129,174 L178,134 L241,125 L284,104 L353,98 L408,123 L469,110 L533,124 L594,112 L651,131 L713,126 L776,147 L816,179 L854,216 L894,266 L908,324 L896,378 L922,434 L905,486 L873,532 L820,581 L752,617 L675,651 L592,667 L501,678 L431,660 L362,666 L294,647 L244,621 L211,588 L176,552 L146,516 L121,472 L104,418 L97,364 L95,306 L104,255 Z" />
-        <path class="china-stroke" d="M823,607 L867,593 L898,615 L894,649 L852,661 L824,638 Z" />
-      </svg>
+      <div class="fallback-map-image" aria-hidden="true"></div>
       ${markers}
     </div>
   `;
@@ -454,7 +453,8 @@ function mapLngToX(lng) {
   const maxLng = 135;
   const value = Number(lng);
   if (Number.isNaN(value)) return 50;
-  return Math.min(93, Math.max(9, ((value - minLng) / (maxLng - minLng)) * 100));
+  const normalized = Math.min(0.93, Math.max(0.09, (value - minLng) / (maxLng - minLng)));
+  return 2.5 + normalized * 95;
 }
 
 function mapLatToY(lat) {
@@ -462,7 +462,8 @@ function mapLatToY(lat) {
   const maxLat = 54;
   const value = Number(lat);
   if (Number.isNaN(value)) return 50;
-  return Math.min(86, Math.max(14, ((maxLat - value) / (maxLat - minLat)) * 100));
+  const normalized = Math.min(0.86, Math.max(0.14, (maxLat - value) / (maxLat - minLat)));
+  return 2.5 + normalized * 95;
 }
 
 async function ensureMapRuntimeReady() {

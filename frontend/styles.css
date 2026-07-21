@@ -117,6 +117,13 @@ button:hover { transform: translateY(-1px); }
   border: 1px solid var(--primary-soft);
 }
 
+.active-tab {
+  color: #fff;
+  background: linear-gradient(135deg, #b46534, #8c4320);
+  border-color: transparent;
+  box-shadow: 0 8px 16px rgba(140, 67, 32, 0.25);
+}
+
 .tip { margin-top: 8px; color: #735845; font-size: 12px; }
 
 .feed-title {
@@ -212,24 +219,18 @@ button:hover { transform: translateY(-1px); }
   background: linear-gradient(180deg, rgba(255, 251, 245, 0.96), rgba(255, 241, 227, 0.96));
 }
 
-.china-svg {
+.fallback-map-image {
   position: absolute;
-  left: 5%;
-  top: 6%;
-  width: 90%;
-  height: 88%;
+  left: 2.5%;
+  top: 2.5%;
+  width: 95%;
+  height: 95%;
+  background-image: url('./mapcn.jpeg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  border-radius: 12px;
   z-index: 1;
-}
-
-.china-main {
-  fill: rgba(226, 174, 139, 0.22);
-}
-
-.china-stroke {
-  fill: none;
-  stroke: rgba(160, 92, 51, 0.55);
-  stroke-width: 7;
-  stroke-linejoin: round;
 }
 
 .fallback-marker {

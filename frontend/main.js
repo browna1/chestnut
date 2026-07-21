@@ -30,7 +30,6 @@ const publishTravelBtn = document.getElementById('publishTravelBtn');
 const travelMap = document.getElementById('travelMap');
 const travelList = document.getElementById('travelList');
 let chinaMapChart = null;
-let mapRuntimeReady = false;
 
 const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
@@ -431,101 +430,71 @@ function renderStaticChinaMap(travels) {
     chinaMapChart = null;
   }
 
-  const markers = travels.map(item => {
-    const left = mapLngToX(item.lng);
-    const top = mapLatToY(item.lat);
+  const visitedProvinces = new Set(
+    travels
+      .map(item => guessProvince(item.place))
+      .filter(name => name && name !== '未知')
+  );
+
+  const provincePaths = PROVINCE_SHAPES.map(item => {
+    const active = visitedProvinces.has(item.name);
+    const label = active
+      ? `<text class="province-label" x="${item.labelX}" y="${item.labelY}">${item.name}</text>`
+      : '';
     return `
-      <div class="fallback-marker" style="left:${left}%;top:${top}%;" title="${escapeHtml(item.place)}"></div>
-      <div class="fallback-label" style="left:${Math.min(left + 1.8, 93)}%;top:${Math.max(top - 2.2, 2)}%;">${escapeHtml(item.place)}</div>
+      <g class="province-group">
+        <path class="province-shape ${active ? 'is-active' : ''}" d="${item.path}" />
+        ${label}
+      </g>
     `;
   }).join('');
 
   travelMap.innerHTML = `
     <div class="fallback-map">
-      <div class="fallback-map-image" aria-hidden="true"></div>
-      ${markers}
+      <svg class="china-svg" viewBox="0 0 1000 710" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <path class="china-border" d="M78 145 L122 100 L190 84 L250 90 L305 65 L362 62 L420 79 L482 71 L543 79 L608 69 L671 87 L735 84 L790 101 L836 133 L874 170 L910 220 L926 270 L917 324 L936 374 L922 426 L886 471 L842 512 L783 547 L719 576 L651 598 L581 615 L508 624 L438 618 L368 606 L306 587 L250 553 L200 514 L161 473 L126 430 L102 386 L86 336 L78 285 L76 230 Z M773 583 L818 570 L848 592 L844 626 L804 641 L774 616 Z" />
+        ${provincePaths}
+      </svg>
     </div>
   `;
 }
 
-function mapLngToX(lng) {
-  const minLng = 73;
-  const maxLng = 135;
-  const value = Number(lng);
-  if (Number.isNaN(value)) return 50;
-  const normalized = (value - minLng) / (maxLng - minLng);
-  return Math.min(92, Math.max(8, normalized * 100));
-}
-
-function mapLatToY(lat) {
-  const minLat = 18;
-  const maxLat = 54;
-  const value = Number(lat);
-  if (Number.isNaN(value)) return 50;
-  const normalized = (maxLat - value) / (maxLat - minLat);
-  return Math.min(88, Math.max(10, normalized * 100));
-}
-
-async function ensureMapRuntimeReady() {
-  if (mapRuntimeReady && window.echarts?.getMap('china')) {
-    return true;
-  }
-
-  if (!window.echarts) {
-    const loaded = await loadScriptByFallback([
-      'https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js',
-      'https://fastly.jsdelivr.net/npm/echarts@5/dist/echarts.min.js',
-      'https://unpkg.com/echarts@5/dist/echarts.min.js'
-    ]);
-    if (!loaded) return false;
-  }
-
-  if (!window.echarts.getMap('china')) {
-    const geoJson = await loadChinaGeoJsonByFallback([
-      'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
-      'https://fastly.jsdelivr.net/npm/echarts@5/map/json/china.json',
-      'https://unpkg.com/echarts@5/map/json/china.json'
-    ]);
-    if (!geoJson) return false;
-    window.echarts.registerMap('china', geoJson);
-  }
-
-  mapRuntimeReady = true;
-  return true;
-}
-
-async function loadScriptByFallback(urls) {
-  for (const url of urls) {
-    const ok = await loadScript(url);
-    if (ok) return true;
-  }
-  return false;
-}
-
-function loadScript(url) {
-  return new Promise(resolve => {
-    const script = document.createElement('script');
-    script.src = url;
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.head.appendChild(script);
-  });
-}
-
-async function loadChinaGeoJsonByFallback(urls) {
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, { method: 'GET' });
-      if (!response.ok) continue;
-      const data = await response.json();
-      if (data?.features?.length) return data;
-    } catch {
-      // 尝试下一个数据源
-    }
-  }
-  return null;
-}
+const PROVINCE_SHAPES = [
+  { name: '新疆', path: 'M100 170 L176 118 L244 108 L248 180 L224 232 L162 255 L108 226 Z', labelX: 170, labelY: 180 },
+  { name: '西藏', path: 'M140 258 L226 242 L292 276 L278 334 L196 360 L130 329 Z', labelX: 205, labelY: 302 },
+  { name: '青海', path: 'M250 182 L304 176 L338 210 L320 258 L260 264 L232 231 Z', labelX: 285, labelY: 220 },
+  { name: '甘肃', path: 'M304 150 L370 144 L408 184 L382 222 L338 210 L304 176 Z', labelX: 355, labelY: 182 },
+  { name: '宁夏', path: 'M387 191 L410 188 L415 218 L392 221 Z', labelX: 399, labelY: 208 },
+  { name: '内蒙古', path: 'M254 106 L315 80 L405 78 L474 90 L546 82 L611 92 L674 88 L726 112 L702 158 L632 164 L564 157 L504 165 L442 154 L386 162 L320 158 L260 162 Z', labelX: 500, labelY: 121 },
+  { name: '黑龙江', path: 'M734 90 L790 102 L832 134 L862 178 L828 223 L770 214 L742 164 Z', labelX: 796, labelY: 156 },
+  { name: '吉林', path: 'M708 166 L744 162 L770 214 L738 241 L700 230 Z', labelX: 734, labelY: 206 },
+  { name: '辽宁', path: 'M670 170 L706 166 L700 230 L662 245 L636 218 Z', labelX: 674, labelY: 209 },
+  { name: '河北', path: 'M598 168 L640 166 L662 245 L628 275 L586 252 L578 214 Z', labelX: 617, labelY: 226 },
+  { name: '北京', path: 'M619 196 L632 196 L632 210 L619 210 Z', labelX: 626, labelY: 206 },
+  { name: '天津', path: 'M634 208 L648 208 L648 222 L634 222 Z', labelX: 641, labelY: 218 },
+  { name: '山西', path: 'M550 176 L596 172 L578 214 L586 252 L548 266 L524 226 Z', labelX: 558, labelY: 220 },
+  { name: '陕西', path: 'M476 182 L526 174 L524 226 L548 266 L506 291 L466 258 Z', labelX: 504, labelY: 238 },
+  { name: '河南', path: 'M548 266 L586 252 L628 275 L610 304 L568 320 L534 296 Z', labelX: 578, labelY: 291 },
+  { name: '山东', path: 'M628 275 L662 245 L694 264 L696 294 L650 307 L610 304 Z', labelX: 653, labelY: 282 },
+  { name: '江苏', path: 'M650 307 L696 294 L706 320 L678 350 L640 344 L628 322 Z', labelX: 670, labelY: 326 },
+  { name: '上海', path: 'M686 352 L696 352 L696 362 L686 362 Z', labelX: 691, labelY: 361 },
+  { name: '安徽', path: 'M610 304 L650 307 L640 344 L628 372 L588 354 L580 322 Z', labelX: 612, labelY: 334 },
+  { name: '湖北', path: 'M506 291 L534 296 L568 320 L580 322 L558 358 L512 364 L486 332 Z', labelX: 531, labelY: 333 },
+  { name: '浙江', path: 'M628 322 L640 344 L638 386 L602 398 L590 370 Z', labelX: 620, labelY: 366 },
+  { name: '江西', path: 'M558 358 L590 370 L602 398 L572 428 L534 414 L530 380 Z', labelX: 566, labelY: 390 },
+  { name: '福建', path: 'M602 398 L638 386 L650 426 L626 456 L592 436 Z', labelX: 620, labelY: 426 },
+  { name: '湖南', path: 'M512 364 L558 358 L530 380 L534 414 L500 430 L476 392 Z', labelX: 516, labelY: 394 },
+  { name: '重庆', path: 'M462 304 L486 332 L472 360 L450 344 L446 320 Z', labelX: 462, labelY: 336 },
+  { name: '四川', path: 'M394 286 L446 278 L462 304 L446 320 L450 344 L420 370 L366 350 L352 312 Z', labelX: 408, labelY: 326 },
+  { name: '贵州', path: 'M430 374 L476 392 L500 430 L466 454 L422 436 L410 402 Z', labelX: 454, labelY: 420 },
+  { name: '云南', path: 'M350 356 L420 370 L410 402 L422 436 L390 470 L330 448 L316 398 Z', labelX: 374, labelY: 421 },
+  { name: '广西', path: 'M466 454 L534 414 L572 428 L560 476 L514 504 L460 486 Z', labelX: 519, labelY: 464 },
+  { name: '广东', path: 'M560 476 L592 436 L626 456 L620 504 L580 530 L542 514 Z', labelX: 583, labelY: 487 },
+  { name: '海南', path: 'M588 556 L614 548 L632 565 L628 588 L602 594 L584 578 Z', labelX: 609, labelY: 576 },
+  { name: '台湾', path: 'M662 448 L682 438 L692 466 L686 494 L668 502 L656 478 Z', labelX: 676, labelY: 470 },
+  { name: '香港', path: 'M589 521 L597 521 L597 529 L589 529 Z', labelX: 593, labelY: 529 },
+  { name: '澳门', path: 'M581 524 L588 524 L588 531 L581 531 Z', labelX: 584, labelY: 531 }
+];
 
 function guessProvince(place) {
   const text = String(place || '');

@@ -220,23 +220,47 @@ button:hover { transform: translateY(-1px); }
   background: linear-gradient(180deg, rgba(255, 251, 245, 0.96), rgba(255, 241, 227, 0.96));
 }
 
-.fallback-map-image {
+.china-svg {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
-  background-image: url('./mapcn.jpeg');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
   z-index: 1;
+}
+
+.china-border {
+  fill: none;
+  stroke: rgba(122, 77, 49, 0.55);
+  stroke-width: 7;
+  stroke-linejoin: round;
+}
+
+.province-shape {
+  fill: transparent;
+  stroke: rgba(152, 103, 70, 0.5);
+  stroke-width: 3;
+  transition: fill .25s ease, stroke .25s ease;
+}
+
+.province-shape.is-active {
+  fill: rgba(186, 107, 57, 0.28);
+  stroke: rgba(133, 72, 36, 0.82);
+}
+
+.province-label {
+  fill: #6e4025;
+  font-size: 21px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.88);
+  stroke-width: 5;
+  stroke-linejoin: round;
 }
 
 .fallback-marker {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 999px;
   transform: translate(-50%, -50%);
   border: 2px solid #fff;

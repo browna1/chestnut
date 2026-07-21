@@ -11,6 +11,7 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const TRAVELS_FILE = path.join(DATA_DIR, 'travels.json');
+const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -20,6 +21,7 @@ const SUPABASE_BASE_URL = normalizeSupabaseBaseUrl(SUPABASE_URL);
 
 const useRemotePersistence = Boolean(SUPABASE_BASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 const useCloudinaryUpload = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET);
+let useCommentTable = false;
 
 const sessions = new Map();
 
@@ -198,8 +200,14 @@ async function bootstrap() {
       fs.writeFileSync(TRAVELS_FILE, JSON.stringify(seed, null, 2));
     }
 
+    if (!fs.existsSync(COMMENTS_FILE)) {
+      fs.writeFileSync(COMMENTS_FILE, JSON.stringify([], null, 2));
+    }
+
     return;
   }
+
+  useCommentTable = await ensureRemoteCommentTableAvailability();
 
   const users = await readUsers();
   if (!users.length) {
@@ -419,7 +427,7 @@ async function deletePost(res, postId, auth) {
     return;
   }
 
-  const canDelete = auth.role === 'admin' || target.author === auth.username;
+  const canDelete = auth.role === 'admin' || auth.username === 'chestnut' || target.author === auth.username;
   if (!canDelete) {
     sendJson(res, 403, { message: '仅作者或管理员可删除' });
     return;
@@ -447,7 +455,7 @@ async function toggleLike(res, postId, auth, body) {
 }
 
 async function createComment(res, postId, body, auth) {
-  const { content } = body;
+  const { content, parentId } = body;
   if (!content || !String(content).trim()) {
     sendJson(res, 400, { message: '评论不能为空' });
     return;
@@ -461,14 +469,22 @@ async function createComment(res, postId, body, auth) {
 
   const comment = {
     id: crypto.randomUUID(),
+    postId,
+    parentId: parentId || null,
     author: resolveActorName(auth, body),
     content: String(content).trim(),
     createdAt: Date.now()
   };
 
-  const comments = Array.isArray(post.comments) ? post.comments : [];
-  comments.push(comment);
-  await updatePostRecord(post.id, { comments });
+  if (parentId) {
+    const flat = await readCommentsByPostId(postId);
+    if (!flat.some(item => item.id === parentId)) {
+      sendJson(res, 400, { message: '父评论不存在' });
+      return;
+    }
+  }
+
+  await createCommentRecord(comment);
   sendJson(res, 201, comment);
 }
 
@@ -616,21 +632,50 @@ async function readUsers() {
 async function readPosts() {
   if (!useRemotePersistence) {
     const posts = readJson(POSTS_FILE, []);
+    const comments = readJson(COMMENTS_FILE, []);
     return posts.map(item => ({
       ...item,
       media: normalizeMediaList(item.media),
       likes: Array.isArray(item.likes) ? item.likes : [],
-      comments: Array.isArray(item.comments) ? item.comments : []
+      comments: buildCommentTree(comments.filter(comment => comment.postId === item.id))
     }));
   }
 
   const posts = await selectRows('posts', '*');
+  const comments = await readAllComments();
   return posts.map(item => ({
     ...item,
     media: normalizeMediaList(item.media),
     likes: Array.isArray(item.likes) ? item.likes : [],
-    comments: Array.isArray(item.comments) ? item.comments : []
+    comments: buildCommentTree(comments.filter(comment => comment.postId === item.id))
   }));
+}
+
+async function readAllComments() {
+  if (!useRemotePersistence) {
+    return readJson(COMMENTS_FILE, []);
+  }
+
+  if (!useCommentTable) {
+    const posts = await selectRows('posts', '*');
+    const merged = [];
+    posts.forEach(post => {
+      const list = Array.isArray(post.comments) ? post.comments : [];
+      list.forEach(item => merged.push({
+        ...item,
+        postId: post.id,
+        parentId: item.parentId || null
+      }));
+    });
+    return merged;
+  }
+
+  return selectRows('comments', '*');
+}
+
+async function readCommentsByPostId(postId) {
+  const all = await readAllComments();
+  return all.filter(item => item.postId === postId);
 }
 
 async function readTravels() {
@@ -647,7 +692,7 @@ async function findPostById(id) {
 
 async function createPostRecord(post) {
   if (!useRemotePersistence) {
-    const posts = await readPosts();
+    const posts = readJson(POSTS_FILE, []);
     posts.push(post);
     writeJson(POSTS_FILE, posts);
     return;
@@ -657,7 +702,7 @@ async function createPostRecord(post) {
 
 async function updatePostRecord(postId, patch) {
   if (!useRemotePersistence) {
-    const posts = await readPosts();
+    const posts = readJson(POSTS_FILE, []);
     const index = posts.findIndex(item => item.id === postId);
     if (index === -1) return;
     posts[index] = { ...posts[index], ...patch };
@@ -669,9 +714,15 @@ async function updatePostRecord(postId, patch) {
 
 async function deletePostRecord(postId) {
   if (!useRemotePersistence) {
-    const posts = await readPosts();
+    const posts = readJson(POSTS_FILE, []);
     writeJson(POSTS_FILE, posts.filter(item => item.id !== postId));
+    const comments = readJson(COMMENTS_FILE, []);
+    writeJson(COMMENTS_FILE, comments.filter(item => item.postId !== postId));
     return;
+  }
+
+  if (useCommentTable) {
+    await deleteRow('comments', `postId=eq.${encodeURIComponent(postId)}`);
   }
   await deleteRow('posts', `id=eq.${encodeURIComponent(postId)}`);
 }
@@ -693,6 +744,58 @@ async function deleteTravelRecord(travelId) {
     return;
   }
   await deleteRow('travels', `id=eq.${encodeURIComponent(travelId)}`);
+}
+
+async function createCommentRecord(comment) {
+  if (!useRemotePersistence) {
+    const comments = readJson(COMMENTS_FILE, []);
+    comments.push(comment);
+    writeJson(COMMENTS_FILE, comments);
+    return;
+  }
+
+  if (useCommentTable) {
+    await insertRow('comments', comment);
+    return;
+  }
+
+  const rows = await selectRows('posts', '*', `id=eq.${encodeURIComponent(comment.postId)}&limit=1`);
+  const post = rows[0];
+  if (!post) return;
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  comments.push(comment);
+  await updateRow('posts', `id=eq.${encodeURIComponent(comment.postId)}`, { comments });
+}
+
+async function ensureRemoteCommentTableAvailability() {
+  if (!useRemotePersistence) return false;
+  try {
+    await selectRows('comments', 'id', 'limit=1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function buildCommentTree(flatComments = []) {
+  const sorted = flatComments.slice().sort((a, b) => a.createdAt - b.createdAt);
+  const map = new Map();
+  const roots = [];
+
+  sorted.forEach(comment => {
+    map.set(comment.id, { ...comment, replies: [] });
+  });
+
+  sorted.forEach(comment => {
+    const node = map.get(comment.id);
+    if (comment.parentId && map.has(comment.parentId)) {
+      map.get(comment.parentId).replies.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  return roots.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 async function selectRows(table, select = '*', query = '') {

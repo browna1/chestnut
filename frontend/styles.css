@@ -1,219 +1,192 @@
 :root {
-  --bg: #fff7ef;
-  --card: #fffefb;
-  --text: #3d2a1f;
-  --primary: #8e4a2a;
-  --primary-soft: #d59a70;
-  --line: #edd9c9;
+  --bg: #fff8ef;
+  --card: #fffdf8;
+  --text: #3a261b;
+  --primary: #a45325;
+  --primary-soft: #d9a27f;
+  --line: #ecd8c7;
+  --shadow: 0 10px 28px rgba(116, 66, 43, 0.12);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background:
-    radial-gradient(circle at top right, #ffe7cf, transparent 30%),
-    radial-gradient(circle at top left, #fff4df, transparent 35%),
-    var(--bg);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'SF Pro Text', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
   color: var(--text);
-  padding: 22px 16px 42px;
-  scroll-behavior: smooth;
+  padding: max(16px, env(safe-area-inset-top)) 14px max(30px, env(safe-area-inset-bottom));
 }
 
-body > * {
-  max-width: 1080px;
-  margin-inline: auto;
+.shell-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(230, 163, 119, 0.28), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(214, 136, 89, 0.22), transparent 30%),
+    radial-gradient(circle at 50% 88%, rgba(255, 214, 176, 0.45), transparent 26%),
+    repeating-radial-gradient(circle at 80% 80%, rgba(148, 88, 55, 0.04) 0 8px, transparent 9px 24px),
+    linear-gradient(180deg, #fff6ec, #fffef8);
+}
+
+body > * { max-width: 760px; margin-inline: auto; }
+
+.topbar,
+.card,
+.post,
+.travel-item {
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.92);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
 }
 
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  padding: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 254, 251, 0.9);
-  backdrop-filter: blur(4px);
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(142, 74, 42, 0.08);
-}
-
-h1, h2, h3, p {
-  margin: 0;
-}
-
-main {
-  margin-top: 16px;
-}
-
-.card {
-  margin-top: 16px;
-  border: 1px solid var(--line);
-  background: rgba(255, 254, 251, 0.92);
-  border-radius: 20px;
-  padding: 18px;
-  box-shadow: 0 10px 28px rgba(142, 74, 42, 0.08);
-}
-
-.form-grid {
+  padding: 16px;
   display: grid;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
 }
+
+.brand h1,
+.brand p,
+h1,h2,h3,p { margin: 0; }
+
+.brand p { color: #6f5445; margin-top: 4px; font-size: 13px; }
+
+.auth-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.card { margin-top: 14px; padding: 16px; }
+
+.form-grid { display: grid; gap: 10px; margin-top: 12px; }
 
 input, textarea, button {
+  font: inherit;
+  border-radius: 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  transition: all 0.22s ease;
+  padding: 12px 13px;
+  transition: all .22s ease;
+}
+
+input, textarea {
+  background: rgba(255,255,255,.84);
 }
 
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-soft);
-  box-shadow: 0 0 0 3px rgba(213, 154, 112, 0.2);
+  box-shadow: 0 0 0 4px rgba(217,162,127,.2);
 }
 
-textarea {
-  min-height: 100px;
-  resize: vertical;
-}
+textarea { min-height: 90px; resize: vertical; }
 
 button {
   cursor: pointer;
-  background: var(--primary);
-  color: #fff;
   border: none;
-  transform: translateY(0);
+  color: #fff;
+  background: linear-gradient(135deg, #b46534, #8c4320);
 }
 
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(142, 74, 42, 0.22);
-}
+button:hover { transform: translateY(-1px); }
 
 .ghost {
-  background: transparent;
   color: var(--primary);
+  background: rgba(255,250,245,.75);
   border: 1px solid var(--primary-soft);
 }
 
-.auth-area {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.tip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #6d5446;
-}
+.tip { margin-top: 8px; color: #735845; font-size: 12px; }
 
 .feed-title {
+  margin: 14px 2px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 16px 2px;
 }
 
 .feed {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
-.post {
-  border: 1px solid var(--line);
-  background: var(--card);
-  border-radius: 16px;
-  padding: 14px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+.post { padding: 14px; }
 
-.post:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(141, 96, 70, 0.12);
-}
-
-.post h3 {
-  margin-bottom: 6px;
-}
+.post h3 { margin-bottom: 6px; }
 
 .post-actions {
-  display: flex;
-  gap: 8px;
   margin-top: 10px;
-}
-
-.comment-list {
-  margin-top: 8px;
-  display: grid;
-  gap: 6px;
-}
-
-.comment-item {
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: 8px;
-  font-size: 13px;
-}
-
-.comment-form {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
 }
 
-.comment-form input {
-  flex: 1;
-}
-
-.meta {
-  font-size: 12px;
-  color: #7a6355;
-  margin-bottom: 8px;
-}
+.meta { font-size: 12px; color: #7a6355; margin-bottom: 8px; }
 
 .media {
   width: 100%;
-  border-radius: 10px;
-  margin-top: 8px;
   max-height: 380px;
   object-fit: cover;
-  border: 1px solid #f2dfcf;
-}
-
-dialog {
-  border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 16px;
-  width: min(420px, 92vw);
+  margin-top: 8px;
+  border: 1px solid #efdac9;
 }
 
-.dialog-actions {
+.comment-list { margin-top: 10px; display: grid; gap: 8px; }
+
+.comment-item {
+  background: #fff;
+  border: 1px dashed #e9d1be;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.comment-children {
+  margin-top: 8px;
+  margin-left: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.reply-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.comment-form {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.comment-form-bar {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
 }
+
+.comment-form-bar input { flex: 1; }
 
 .travel-map {
   position: relative;
   width: 100%;
-  height: 360px;
+  height: 320px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 18px;
   margin-top: 14px;
   background:
-    linear-gradient(180deg, rgba(255, 250, 241, 0.95), rgba(255, 241, 226, 0.95)),
-    repeating-linear-gradient(0deg, transparent 0 29px, rgba(141, 100, 74, 0.08) 30px),
-    repeating-linear-gradient(90deg, transparent 0 29px, rgba(141, 100, 74, 0.08) 30px);
+    linear-gradient(180deg, rgba(255, 251, 245, 0.95), rgba(255, 241, 227, 0.95)),
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(141, 100, 74, 0.08) 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, rgba(141, 100, 74, 0.08) 24px);
   overflow: hidden;
 }
 
@@ -240,7 +213,7 @@ dialog {
 .marker-label {
   position: absolute;
   transform: translate(10px, -16px);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 2px 6px;
@@ -248,30 +221,41 @@ dialog {
   white-space: nowrap;
 }
 
-.travel-list {
-  margin-top: 14px;
+.travel-list { margin-top: 14px; display: grid; gap: 8px; }
+
+.travel-item { padding: 10px; }
+
+.ios-dialog {
+  border: 0;
+  border-radius: 28px;
+  padding: 0;
+  width: min(92vw, 420px);
+  background: transparent;
+}
+
+.ios-dialog::backdrop { background: rgba(40, 22, 11, 0.32); backdrop-filter: blur(5px); }
+
+.dialog-shell {
+  padding: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.65);
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,245,236,.95));
+  box-shadow: 0 18px 45px rgba(73, 39, 20, 0.24);
+}
+
+.dialog-shell h3 { text-align: center; margin-bottom: 4px; }
+
+.dialog-sub { text-align: center; color: #7a6355; font-size: 13px; margin-bottom: 10px; }
+
+.dialog-actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: 10px;
 }
 
-.travel-item {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
-  background: #fffdfa;
-}
+.dialog-cancel { width: 100%; margin-top: 8px; }
 
-@media (max-width: 720px) {
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .auth-area {
-    justify-content: flex-start;
-  }
-
-  .feed-title {
-    margin-top: 6px;
-  }
+@media (min-width: 800px) {
+  .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -2,20 +2,22 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Chestnut's Life</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <div class="shell-bg"></div>
+
   <header class="topbar">
-    <div>
+    <div class="brand">
       <h1>🌰 粟粟的每一天</h1>
-      <p>记录猫咪、生活与旅行的小世界</p>
+      <p>猫咪、生活、旅行的栗子色日记</p>
     </div>
     <div class="auth-area">
       <span id="viewerState">当前：游客</span>
       <button id="goFeedBtn" class="ghost">动态</button>
-      <button id="goTravelBtn" class="ghost">旅行地图</button>
+      <button id="goTravelBtn" class="ghost">旅行</button>
       <button id="loginBtn">登录</button>
       <button id="logoutBtn" class="ghost" hidden>退出</button>
     </div>
@@ -24,14 +26,14 @@
   <section id="publishSection" class="card" hidden>
     <h2>发布新动态</h2>
     <div class="form-grid">
-      <input id="titleInput" placeholder="标题，如：棉棉今天又粘人啦" />
-      <input id="locationInput" placeholder="地点，如：上海、杭州西湖" />
-      <input id="topicInput" placeholder="主题，如：猫咪日常 / 旅行" />
-      <textarea id="contentInput" placeholder="写下今天的故事..."></textarea>
+      <input id="titleInput" placeholder="标题（必填）" />
+      <input id="locationInput" placeholder="地点（选填）" />
+      <input id="topicInput" placeholder="主题（选填）" />
+      <textarea id="contentInput" placeholder="写下今天的故事（选填）..."></textarea>
       <input id="mediaInput" type="file" multiple accept="image/*,video/*" />
       <button id="publishBtn">发布内容</button>
     </div>
-    <p class="tip">支持图片和视频上传。仅 `chestnut` 可发布。</p>
+    <p class="tip">支持图片和视频。`chestnut` 与管理员可发布与删除全部帖子。</p>
   </section>
 
   <main id="feedPage">
@@ -44,7 +46,7 @@
 
   <section id="travelPage" class="card" hidden>
     <section class="feed-title">
-      <h2>旅行地图页</h2>
+      <h2>旅行地图</h2>
       <button id="travelRefreshBtn" class="ghost">刷新地点</button>
     </section>
 
@@ -65,16 +67,19 @@
     <div id="travelList" class="travel-list"></div>
   </section>
 
-  <dialog id="loginDialog">
-    <h3>账号登录</h3>
-    <input id="usernameInput" placeholder="用户名" />
-    <input id="passwordInput" type="password" placeholder="密码" />
-    <div class="dialog-actions">
-      <button id="confirmLoginBtn">登录</button>
-      <button id="registerBtn" class="ghost">注册</button>
-      <button id="cancelLoginBtn" class="ghost">取消</button>
+  <dialog id="loginDialog" class="ios-dialog">
+    <div class="dialog-shell">
+      <h3>欢迎回来</h3>
+      <p class="dialog-sub">登录或注册后可管理你的内容</p>
+      <input id="usernameInput" placeholder="用户名" />
+      <input id="passwordInput" type="password" placeholder="密码" />
+      <div class="dialog-actions">
+        <button id="confirmLoginBtn">登录</button>
+        <button id="registerBtn" class="ghost">注册</button>
+      </div>
+      <button id="cancelLoginBtn" class="ghost dialog-cancel">取消</button>
+      <p class="tip">用户名3-20位（字母/数字/下划线），密码至少7位且含字母+数字。</p>
     </div>
-    <p class="tip">新用户可注册：用户名3-20位（字母/数字/下划线），密码至少7位且含字母+数字。</p>
   </dialog>
 
   <script src="./config.js"></script>

@@ -28,3 +28,12 @@ create table if not exists travels (
   author text not null,
   "createdAt" bigint not null
 );
+
+create table if not exists comments (
+  id uuid primary key,
+  "postId" uuid not null,
+  "parentId" uuid,
+  author text not null,
+  content text not null,
+  "createdAt" bigint not null
+);

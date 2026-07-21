@@ -90,11 +90,8 @@ async function login() {
   localStorage.setItem('role', state.role);
   loginDialog.close();
   syncView();
-  if (currentPage === 'feed') {
-    loadPosts();
-  } else {
-    loadTravels();
-  }
+  if (currentPage === 'feed') loadPosts();
+  if (currentPage === 'travel') loadTravels();
 }
 
 async function register() {
@@ -181,9 +178,7 @@ async function publishTravel() {
 
   if (!travel) return;
   ['travelPlaceInput', 'travelCountryInput', 'travelDateInput', 'travelLatInput', 'travelLngInput', 'travelNoteInput']
-    .forEach(id => {
-      document.getElementById(id).value = '';
-    });
+    .forEach(id => { document.getElementById(id).value = ''; });
   await loadTravels();
 }
 
@@ -193,9 +188,7 @@ async function deletePost(postId) {
     method: 'DELETE',
     auth: true
   });
-  if (result) {
-    loadPosts();
-  }
+  if (result) loadPosts();
 }
 
 async function toggleLike(postId) {
@@ -205,18 +198,17 @@ async function toggleLike(postId) {
     body: payload,
     auth: Boolean(state.token)
   });
-  if (result) {
-    loadPosts();
-  }
+  if (result) loadPosts();
 }
 
-async function commentPost(postId, inputEl) {
+async function commentPost(postId, inputEl, parentId = null) {
   const content = inputEl.value.trim();
   if (!content) return;
   const result = await request(`/posts/${postId}/comments`, {
     method: 'POST',
     body: {
       content,
+      parentId,
       guestName: state.token ? undefined : state.guestName
     },
     auth: Boolean(state.token)
@@ -233,9 +225,7 @@ async function deleteTravel(travelId) {
     method: 'DELETE',
     auth: true
   });
-  if (result) {
-    loadTravels();
-  }
+  if (result) loadTravels();
 }
 
 async function loadPosts() {
@@ -247,14 +237,14 @@ async function loadPosts() {
     const card = document.createElement('article');
     card.className = 'post';
     const time = new Date(post.createdAt).toLocaleString();
-    const canDelete = state.role === 'admin' || state.username === post.author;
+    const canDelete = state.role === 'admin' || state.username === 'chestnut' || state.username === post.author;
     const actorName = state.token ? state.username : state.guestName;
     const isLiked = (post.likes || []).includes(actorName);
 
     card.innerHTML = `
       <h3>${escapeHtml(post.title)}</h3>
       <p class="meta">${escapeHtml(post.author)} · ${time}</p>
-      <p>${escapeHtml(post.content)}</p>
+      ${post.content ? `<p>${escapeHtml(post.content)}</p>` : ''}
       ${post.topic ? `<p class="meta">#${escapeHtml(post.topic)}</p>` : ''}
       ${post.location ? `<p class="meta">📍${escapeHtml(post.location)}</p>` : ''}
       ${renderMedia(post.media)}
@@ -262,10 +252,13 @@ async function loadPosts() {
         <button class="ghost" data-action="like" data-id="${post.id}">${isLiked ? '已点赞' : '点赞'} · ${(post.likes || []).length}</button>
         ${canDelete ? `<button class="ghost" data-action="delete" data-id="${post.id}">删除</button>` : ''}
       </div>
-      <div class="comment-list">
-        ${renderComments(post.comments)}
+      <div class="comment-list">${renderComments(post.comments, post.id)}</div>
+      <div class="comment-form">
+        <div class="comment-form-bar">
+          <input data-comment-input="${post.id}" placeholder="${state.token ? '写评论...' : `${state.guestName}：写评论...`}" />
+          <button data-action="comment" data-id="${post.id}">发送</button>
+        </div>
       </div>
-      <div class="comment-form"><input data-comment-input="${post.id}" placeholder="${state.token ? '写评论...' : `${state.guestName}：写评论...`}" /><button data-action="comment" data-id="${post.id}">发送</button></div>
     `;
     feed.appendChild(card);
   });
@@ -281,9 +274,21 @@ async function loadPosts() {
   feed.querySelectorAll('button[data-action="comment"]').forEach(btn => {
     btn.addEventListener('click', () => {
       const inputEl = feed.querySelector(`input[data-comment-input="${btn.dataset.id}"]`);
-      if (inputEl) {
-        commentPost(btn.dataset.id, inputEl);
-      }
+      if (!inputEl) return;
+      const parentId = inputEl.dataset.parentId || null;
+      commentPost(btn.dataset.id, inputEl, parentId);
+      inputEl.dataset.parentId = '';
+    });
+  });
+
+  feed.querySelectorAll('button[data-action="reply"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inputEl = feed.querySelector(`input[data-comment-input="${btn.dataset.post}"]`);
+      if (!inputEl) return;
+      inputEl.focus();
+      const targetAuthor = btn.dataset.author || 'TA';
+      inputEl.value = `回复 ${targetAuthor}：`;
+      inputEl.dataset.parentId = btn.dataset.comment;
     });
   });
 }
@@ -328,16 +333,24 @@ async function loadTravels() {
   });
 }
 
-function renderComments(comments = []) {
-  if (!comments.length) {
-    return '<p class="tip">暂无评论</p>';
-  }
+function renderComments(comments = [], postId, level = 0) {
+  if (!comments.length) return '<p class="tip">暂无评论</p>';
+
   return comments
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
     .map(comment => {
       const time = new Date(comment.createdAt).toLocaleString();
-      return `<div class="comment-item"><p><strong>${escapeHtml(comment.author)}</strong> <span class="meta">${time}</span></p><p>${escapeHtml(comment.content)}</p></div>`;
+      return `
+        <div class="comment-item">
+          <p><strong>${escapeHtml(comment.author)}</strong> <span class="meta">${time}</span></p>
+          <p>${escapeHtml(comment.content)}</p>
+          <div class="reply-actions">
+            <button class="ghost reply-btn" data-action="reply" data-post="${postId}" data-comment="${comment.id}" data-author="${escapeHtml(comment.author)}">回复</button>
+          </div>
+          ${comment.replies?.length ? `<div class="comment-children">${renderComments(comment.replies, postId, level + 1)}</div>` : ''}
+        </div>
+      `;
     })
     .join('');
 }
@@ -348,9 +361,7 @@ function renderMedia(items = []) {
     .map(item => {
       const src = resolveMediaUrl(item);
       const type = getMediaType(item);
-      if (type.startsWith('video/')) {
-        return `<video class="media" src="${src}" controls></video>`;
-      }
+      if (type.startsWith('video/')) return `<video class="media" src="${src}" controls></video>`;
       return `<img class="media" src="${src}" alt="post media" />`;
     })
     .join('');
@@ -364,15 +375,9 @@ function resolveMediaUrl(item) {
     return `${API_ORIGIN}/uploads/${item}`;
   }
 
-  if (item.url && (item.url.startsWith('http://') || item.url.startsWith('https://'))) {
-    return item.url;
-  }
-  if (item.url && item.url.startsWith('/')) {
-    return `${API_ORIGIN}${item.url}`;
-  }
-  if (item.url) {
-    return `${API_ORIGIN}/uploads/${item.url}`;
-  }
+  if (item.url && (item.url.startsWith('http://') || item.url.startsWith('https://'))) return item.url;
+  if (item.url && item.url.startsWith('/')) return `${API_ORIGIN}${item.url}`;
+  if (item.url) return `${API_ORIGIN}/uploads/${item.url}`;
   return '';
 }
 
@@ -380,9 +385,7 @@ function getMediaType(item) {
   if (typeof item === 'object' && item?.type) return item.type;
   const url = typeof item === 'string' ? item : (item?.url || '');
   const lower = url.toLowerCase();
-  if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm')) {
-    return 'video/mp4';
-  }
+  if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm')) return 'video/mp4';
   return 'image/jpeg';
 }
 
@@ -416,9 +419,7 @@ function escapeHtml(text) {
 
 async function request(path, options) {
   const headers = { 'Content-Type': 'application/json' };
-  if (options.auth && state.token) {
-    headers.Authorization = `Bearer ${state.token}`;
-  }
+  if (options.auth && state.token) headers.Authorization = `Bearer ${state.token}`;
 
   try {
     const response = await fetch(`${API}${path}`, {

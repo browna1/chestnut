@@ -50,8 +50,14 @@ confirmLoginBtn.addEventListener('click', login);
 registerBtn.addEventListener('click', register);
 publishBtn.addEventListener('click', publishPost);
 refreshBtn.addEventListener('click', loadPosts);
-goFeedBtn.addEventListener('click', () => switchPage('feed'));
-goTravelBtn.addEventListener('click', () => switchPage('travel'));
+goFeedBtn.addEventListener('click', async () => {
+  switchPage('feed');
+  await loadPosts();
+});
+goTravelBtn.addEventListener('click', async () => {
+  switchPage('travel');
+  await loadTravels();
+});
 travelRefreshBtn.addEventListener('click', loadTravels);
 publishTravelBtn.addEventListener('click', publishTravel);
 window.addEventListener('resize', () => {
@@ -410,74 +416,122 @@ function lngToX(lng) {
 async function renderChinaMap(travels) {
   const ready = await ensureMapRuntimeReady();
   if (!ready || !window.echarts) {
-    travelMap.innerHTML = '<p class="tip">地图加载失败，请检查网络（可尝试切换网络后刷新）。</p>';
+    renderStaticChinaMap(travels);
     return;
   }
 
-  if (!chinaMapChart) {
-    chinaMapChart = window.echarts.init(travelMap);
-  }
+  try {
+    if (!chinaMapChart) {
+      chinaMapChart = window.echarts.init(travelMap);
+    }
 
-  const points = travels.map(item => ({
-    name: item.place,
-    value: [Number(item.lng), Number(item.lat), item.place],
-    author: item.author,
-    province: guessProvince(item.place),
-    date: item.date || ''
-  }));
+    const points = travels.map(item => ({
+      name: item.place,
+      value: [Number(item.lng), Number(item.lat), item.place],
+      author: item.author,
+      province: guessProvince(item.place),
+      date: item.date || ''
+    }));
 
-  chinaMapChart.setOption({
-    tooltip: {
-      trigger: 'item',
-      formatter(params) {
-        const data = params.data || {};
-        if (params.seriesType === 'map') {
-          return `${params.name}`;
+    chinaMapChart.setOption({
+      tooltip: {
+        trigger: 'item',
+        formatter(params) {
+          const data = params.data || {};
+          if (params.seriesType === 'map') {
+            return `${params.name}`;
+          }
+          return `${data.value?.[2] || data.name}<br/>省份：${data.province || '未知'}<br/>作者：${data.author || ''}${data.date ? `<br/>日期：${data.date}` : ''}`;
         }
-        return `${data.value?.[2] || data.name}<br/>省份：${data.province || '未知'}<br/>作者：${data.author || ''}${data.date ? `<br/>日期：${data.date}` : ''}`;
-      }
-    },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: 1.05,
-      label: {
-        show: true,
-        fontSize: 10,
-        color: '#765846'
       },
-      itemStyle: {
-        areaColor: '#f9e6d4',
-        borderColor: '#c89573',
-        borderWidth: 1
-      },
-      emphasis: {
-        label: { color: '#6a3a1f' },
-        itemStyle: { areaColor: '#f3c8a7' }
-      }
-    },
-    series: [
-      {
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        symbolSize: 12,
-        itemStyle: {
-          color: '#a54f20'
-        },
+      geo: {
+        map: 'china',
+        roam: true,
+        zoom: 1.05,
         label: {
           show: true,
-          formatter: param => param.data?.name || '',
-          position: 'right',
-          fontSize: 11,
-          color: '#5e3f2d',
-          backgroundColor: 'rgba(255,255,255,0.85)',
-          borderRadius: 5,
-          padding: [2, 6]
+          fontSize: 10,
+          color: '#765846'
         },
-        data: points
-      }
-    ]
-  });
+        itemStyle: {
+          areaColor: '#f9e6d4',
+          borderColor: '#c89573',
+          borderWidth: 1
+        },
+        emphasis: {
+          label: { color: '#6a3a1f' },
+          itemStyle: { areaColor: '#f3c8a7' }
+        }
+      },
+      series: [
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          symbolSize: 12,
+          itemStyle: {
+            color: '#a54f20'
+          },
+          label: {
+            show: true,
+            formatter: param => param.data?.name || '',
+            position: 'right',
+            fontSize: 11,
+            color: '#5e3f2d',
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            borderRadius: 5,
+            padding: [2, 6]
+          },
+          data: points
+        }
+      ]
+    });
+  } catch {
+    renderStaticChinaMap(travels);
+  }
+}
+
+function renderStaticChinaMap(travels) {
+  if (chinaMapChart) {
+    try {
+      chinaMapChart.dispose();
+    } catch {
+      // ignore
+    }
+    chinaMapChart = null;
+  }
+
+  const markers = travels.map(item => {
+    const left = mapLngToX(item.lng);
+    const top = mapLatToY(item.lat);
+    return `
+      <div class="fallback-marker" style="left:${left}%;top:${top}%;" title="${escapeHtml(item.place)}"></div>
+      <div class="fallback-label" style="left:${Math.min(left + 1.8, 93)}%;top:${Math.max(top - 2.2, 2)}%;">${escapeHtml(item.place)}</div>
+    `;
+  }).join('');
+
+  travelMap.innerHTML = `
+    <div class="fallback-map">
+      <div class="fallback-title">中国地图静态模式（网络受限时自动启用）</div>
+      <div class="fallback-shape"></div>
+      ${markers}
+    </div>
+  `;
+}
+
+function mapLngToX(lng) {
+  const minLng = 73;
+  const maxLng = 135;
+  const value = Number(lng);
+  if (Number.isNaN(value)) return 50;
+  return Math.min(96, Math.max(4, ((value - minLng) / (maxLng - minLng)) * 100));
+}
+
+function mapLatToY(lat) {
+  const minLat = 18;
+  const maxLat = 54;
+  const value = Number(lat);
+  if (Number.isNaN(value)) return 50;
+  return Math.min(95, Math.max(5, ((maxLat - value) / (maxLat - minLat)) * 100));
 }
 
 async function ensureMapRuntimeReady() {

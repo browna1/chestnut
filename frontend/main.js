@@ -30,6 +30,7 @@ const publishTravelBtn = document.getElementById('publishTravelBtn');
 const travelMap = document.getElementById('travelMap');
 const travelList = document.getElementById('travelList');
 let chinaMapChart = null;
+let chinaGeoData = null;
 
 const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
@@ -417,10 +418,10 @@ function lngToX(lng) {
 }
 
 async function renderChinaMap(travels) {
-  renderStaticChinaMap(travels);
+  await renderStaticChinaMap(travels);
 }
 
-function renderStaticChinaMap(travels) {
+async function renderStaticChinaMap(travels) {
   if (chinaMapChart) {
     try {
       chinaMapChart.dispose();
@@ -430,16 +431,24 @@ function renderStaticChinaMap(travels) {
     chinaMapChart = null;
   }
 
+  const geo = await getChinaGeoData();
+  if (!geo?.features?.length) {
+    travelMap.innerHTML = '<p class="tip">地图数据加载失败。</p>';
+    return;
+  }
+
   const visitedProvinces = new Set(
     travels
-      .map(item => guessProvince(item.place))
+      .map(item => normalizeProvinceName(guessProvince(item.place)))
       .filter(name => name && name !== '未知')
   );
 
-  const provincePaths = PROVINCE_SHAPES.map(item => {
-    const active = visitedProvinces.has(item.name);
+  const projected = projectGeoFeatures(geo.features, 1000, 710, 22);
+
+  const provincePaths = projected.paths.map(item => {
+    const active = visitedProvinces.has(normalizeProvinceName(item.name));
     const label = active
-      ? `<text class="province-label" x="${item.labelX}" y="${item.labelY}">${item.name}</text>`
+      ? `<text class="province-label" x="${item.labelX.toFixed(1)}" y="${item.labelY.toFixed(1)}">${escapeHtml(item.shortName)}</text>`
       : '';
     return `
       <g class="province-group">
@@ -449,52 +458,120 @@ function renderStaticChinaMap(travels) {
     `;
   }).join('');
 
+  const borderPath = projected.borderPath;
+
   travelMap.innerHTML = `
     <div class="fallback-map">
       <svg class="china-svg" viewBox="0 0 1000 710" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-        <path class="china-border" d="M78 145 L122 100 L190 84 L250 90 L305 65 L362 62 L420 79 L482 71 L543 79 L608 69 L671 87 L735 84 L790 101 L836 133 L874 170 L910 220 L926 270 L917 324 L936 374 L922 426 L886 471 L842 512 L783 547 L719 576 L651 598 L581 615 L508 624 L438 618 L368 606 L306 587 L250 553 L200 514 L161 473 L126 430 L102 386 L86 336 L78 285 L76 230 Z M773 583 L818 570 L848 592 L844 626 L804 641 L774 616 Z" />
+        <path class="china-border" d="${borderPath}" />
         ${provincePaths}
       </svg>
     </div>
   `;
 }
 
-const PROVINCE_SHAPES = [
-  { name: '新疆', path: 'M100 170 L176 118 L244 108 L248 180 L224 232 L162 255 L108 226 Z', labelX: 170, labelY: 180 },
-  { name: '西藏', path: 'M140 258 L226 242 L292 276 L278 334 L196 360 L130 329 Z', labelX: 205, labelY: 302 },
-  { name: '青海', path: 'M250 182 L304 176 L338 210 L320 258 L260 264 L232 231 Z', labelX: 285, labelY: 220 },
-  { name: '甘肃', path: 'M304 150 L370 144 L408 184 L382 222 L338 210 L304 176 Z', labelX: 355, labelY: 182 },
-  { name: '宁夏', path: 'M387 191 L410 188 L415 218 L392 221 Z', labelX: 399, labelY: 208 },
-  { name: '内蒙古', path: 'M254 106 L315 80 L405 78 L474 90 L546 82 L611 92 L674 88 L726 112 L702 158 L632 164 L564 157 L504 165 L442 154 L386 162 L320 158 L260 162 Z', labelX: 500, labelY: 121 },
-  { name: '黑龙江', path: 'M734 90 L790 102 L832 134 L862 178 L828 223 L770 214 L742 164 Z', labelX: 796, labelY: 156 },
-  { name: '吉林', path: 'M708 166 L744 162 L770 214 L738 241 L700 230 Z', labelX: 734, labelY: 206 },
-  { name: '辽宁', path: 'M670 170 L706 166 L700 230 L662 245 L636 218 Z', labelX: 674, labelY: 209 },
-  { name: '河北', path: 'M598 168 L640 166 L662 245 L628 275 L586 252 L578 214 Z', labelX: 617, labelY: 226 },
-  { name: '北京', path: 'M619 196 L632 196 L632 210 L619 210 Z', labelX: 626, labelY: 206 },
-  { name: '天津', path: 'M634 208 L648 208 L648 222 L634 222 Z', labelX: 641, labelY: 218 },
-  { name: '山西', path: 'M550 176 L596 172 L578 214 L586 252 L548 266 L524 226 Z', labelX: 558, labelY: 220 },
-  { name: '陕西', path: 'M476 182 L526 174 L524 226 L548 266 L506 291 L466 258 Z', labelX: 504, labelY: 238 },
-  { name: '河南', path: 'M548 266 L586 252 L628 275 L610 304 L568 320 L534 296 Z', labelX: 578, labelY: 291 },
-  { name: '山东', path: 'M628 275 L662 245 L694 264 L696 294 L650 307 L610 304 Z', labelX: 653, labelY: 282 },
-  { name: '江苏', path: 'M650 307 L696 294 L706 320 L678 350 L640 344 L628 322 Z', labelX: 670, labelY: 326 },
-  { name: '上海', path: 'M686 352 L696 352 L696 362 L686 362 Z', labelX: 691, labelY: 361 },
-  { name: '安徽', path: 'M610 304 L650 307 L640 344 L628 372 L588 354 L580 322 Z', labelX: 612, labelY: 334 },
-  { name: '湖北', path: 'M506 291 L534 296 L568 320 L580 322 L558 358 L512 364 L486 332 Z', labelX: 531, labelY: 333 },
-  { name: '浙江', path: 'M628 322 L640 344 L638 386 L602 398 L590 370 Z', labelX: 620, labelY: 366 },
-  { name: '江西', path: 'M558 358 L590 370 L602 398 L572 428 L534 414 L530 380 Z', labelX: 566, labelY: 390 },
-  { name: '福建', path: 'M602 398 L638 386 L650 426 L626 456 L592 436 Z', labelX: 620, labelY: 426 },
-  { name: '湖南', path: 'M512 364 L558 358 L530 380 L534 414 L500 430 L476 392 Z', labelX: 516, labelY: 394 },
-  { name: '重庆', path: 'M462 304 L486 332 L472 360 L450 344 L446 320 Z', labelX: 462, labelY: 336 },
-  { name: '四川', path: 'M394 286 L446 278 L462 304 L446 320 L450 344 L420 370 L366 350 L352 312 Z', labelX: 408, labelY: 326 },
-  { name: '贵州', path: 'M430 374 L476 392 L500 430 L466 454 L422 436 L410 402 Z', labelX: 454, labelY: 420 },
-  { name: '云南', path: 'M350 356 L420 370 L410 402 L422 436 L390 470 L330 448 L316 398 Z', labelX: 374, labelY: 421 },
-  { name: '广西', path: 'M466 454 L534 414 L572 428 L560 476 L514 504 L460 486 Z', labelX: 519, labelY: 464 },
-  { name: '广东', path: 'M560 476 L592 436 L626 456 L620 504 L580 530 L542 514 Z', labelX: 583, labelY: 487 },
-  { name: '海南', path: 'M588 556 L614 548 L632 565 L628 588 L602 594 L584 578 Z', labelX: 609, labelY: 576 },
-  { name: '台湾', path: 'M662 448 L682 438 L692 466 L686 494 L668 502 L656 478 Z', labelX: 676, labelY: 470 },
-  { name: '香港', path: 'M589 521 L597 521 L597 529 L589 529 Z', labelX: 593, labelY: 529 },
-  { name: '澳门', path: 'M581 524 L588 524 L588 531 L581 531 Z', labelX: 584, labelY: 531 }
-];
+async function getChinaGeoData() {
+  if (chinaGeoData) return chinaGeoData;
+  try {
+    const response = await fetch('./china.geo.json');
+    if (!response.ok) return null;
+    chinaGeoData = await response.json();
+    return chinaGeoData;
+  } catch {
+    return null;
+  }
+}
+
+function projectGeoFeatures(features, width, height, padding) {
+  const coords = [];
+  features.forEach(feature => collectCoords(feature.geometry, coords));
+  const lngs = coords.map(item => item[0]);
+  const lats = coords.map(item => item[1]);
+
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+
+  const xScale = (width - padding * 2) / (maxLng - minLng || 1);
+  const yScale = (height - padding * 2) / (maxLat - minLat || 1);
+  const scale = Math.min(xScale, yScale);
+
+  const contentWidth = (maxLng - minLng) * scale;
+  const contentHeight = (maxLat - minLat) * scale;
+  const offsetX = (width - contentWidth) / 2;
+  const offsetY = (height - contentHeight) / 2;
+
+  function project(point) {
+    const [lng, lat] = point;
+    const x = offsetX + (lng - minLng) * scale;
+    const y = offsetY + (maxLat - lat) * scale;
+    return [x, y];
+  }
+
+  const paths = features.map(feature => {
+    const polygons = normalizeGeometryToPolygons(feature.geometry);
+    const d = polygons.map(rings => rings.map((ring, ringIndex) =>
+      ring.map((pt, idx) => {
+        const [x, y] = project(pt);
+        return `${idx === 0 ? (ringIndex === 0 ? 'M' : 'M') : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(' ') + ' Z'
+    ).join(' ')).join(' ');
+
+    const points = polygons.flat(2);
+    const center = averageProjected(points, project);
+    const fullName = String(feature.properties?.name || '');
+    return {
+      name: fullName,
+      shortName: shortProvinceName(fullName),
+      path: d,
+      labelX: center[0],
+      labelY: center[1]
+    };
+  });
+
+  const borderPath = paths.map(item => item.path).join(' ');
+  return { paths, borderPath };
+}
+
+function collectCoords(geometry, output) {
+  if (!geometry) return;
+  const polygons = normalizeGeometryToPolygons(geometry);
+  polygons.forEach(rings => rings.forEach(ring => ring.forEach(point => output.push(point))));
+}
+
+function normalizeGeometryToPolygons(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === 'Polygon') return [geometry.coordinates];
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates;
+  return [];
+}
+
+function averageProjected(points, projector) {
+  if (!points.length) return [500, 355];
+  let totalX = 0;
+  let totalY = 0;
+  points.forEach(point => {
+    const [x, y] = projector(point);
+    totalX += x;
+    totalY += y;
+  });
+  return [totalX / points.length, totalY / points.length];
+}
+
+function shortProvinceName(name) {
+  return String(name || '')
+    .replace(/(省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区)$/g, '')
+    .replace(/^内蒙古/, '内蒙古')
+    .replace(/^广西/, '广西')
+    .replace(/^宁夏/, '宁夏')
+    .replace(/^新疆/, '新疆')
+    .replace(/^西藏/, '西藏');
+}
+
+function normalizeProvinceName(name) {
+  return shortProvinceName(name).trim();
+}
 
 function guessProvince(place) {
   const text = String(place || '');

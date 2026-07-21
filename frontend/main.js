@@ -4,8 +4,11 @@ const API_ORIGIN = new URL(API).origin;
 const state = {
   token: localStorage.getItem('token') || '',
   username: localStorage.getItem('username') || '',
-  role: localStorage.getItem('role') || 'guest'
+  role: localStorage.getItem('role') || 'guest',
+  guestName: localStorage.getItem('guest_name') || createGuestName()
 };
+
+localStorage.setItem('guest_name', state.guestName);
 
 const viewerState = document.getElementById('viewerState');
 const loginBtn = document.getElementById('loginBtn');
@@ -30,6 +33,7 @@ const travelList = document.getElementById('travelList');
 const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
 const cancelLoginBtn = document.getElementById('cancelLoginBtn');
+const registerBtn = document.getElementById('registerBtn');
 
 let currentPage = 'feed';
 
@@ -41,6 +45,7 @@ loginBtn.addEventListener('click', () => loginDialog.showModal());
 cancelLoginBtn.addEventListener('click', () => loginDialog.close());
 logoutBtn.addEventListener('click', logout);
 confirmLoginBtn.addEventListener('click', login);
+registerBtn.addEventListener('click', register);
 publishBtn.addEventListener('click', publishPost);
 refreshBtn.addEventListener('click', loadPosts);
 goFeedBtn.addEventListener('click', () => switchPage('feed'));
@@ -53,7 +58,7 @@ function syncView() {
   const canPublish = ['uploader', 'admin'].includes(state.role);
   viewerState.textContent = isAuth
     ? `当前：${state.username}（${state.role}）`
-    : '当前：游客';
+    : `当前：${state.guestName}`;
   loginBtn.hidden = isAuth;
   logoutBtn.hidden = !isAuth;
   publishSection.hidden = !canPublish;
@@ -90,6 +95,19 @@ async function login() {
   } else {
     loadTravels();
   }
+}
+
+async function register() {
+  const username = document.getElementById('usernameInput').value.trim();
+  const password = document.getElementById('passwordInput').value.trim();
+  if (!username || !password) return alert('请输入用户名和密码');
+
+  const data = await request('/auth/register', {
+    method: 'POST',
+    body: { username, password }
+  });
+  if (!data) return;
+  alert('注册成功，请点击“登录”继续');
 }
 
 function logout() {
@@ -181,9 +199,11 @@ async function deletePost(postId) {
 }
 
 async function toggleLike(postId) {
+  const payload = state.token ? {} : { guestName: state.guestName };
   const result = await request(`/posts/${postId}/like`, {
     method: 'POST',
-    auth: true
+    body: payload,
+    auth: Boolean(state.token)
   });
   if (result) {
     loadPosts();
@@ -195,8 +215,11 @@ async function commentPost(postId, inputEl) {
   if (!content) return;
   const result = await request(`/posts/${postId}/comments`, {
     method: 'POST',
-    body: { content },
-    auth: true
+    body: {
+      content,
+      guestName: state.token ? undefined : state.guestName
+    },
+    auth: Boolean(state.token)
   });
   if (result) {
     inputEl.value = '';
@@ -225,7 +248,8 @@ async function loadPosts() {
     card.className = 'post';
     const time = new Date(post.createdAt).toLocaleString();
     const canDelete = state.role === 'admin' || state.username === post.author;
-    const isLiked = (post.likes || []).includes(state.username);
+    const actorName = state.token ? state.username : state.guestName;
+    const isLiked = (post.likes || []).includes(actorName);
 
     card.innerHTML = `
       <h3>${escapeHtml(post.title)}</h3>
@@ -241,7 +265,7 @@ async function loadPosts() {
       <div class="comment-list">
         ${renderComments(post.comments)}
       </div>
-      ${state.token ? `<div class="comment-form"><input data-comment-input="${post.id}" placeholder="写评论..." /><button data-action="comment" data-id="${post.id}">发送</button></div>` : '<p class="tip">登录后可点赞和评论</p>'}
+      <div class="comment-form"><input data-comment-input="${post.id}" placeholder="${state.token ? '写评论...' : `${state.guestName}：写评论...`}" /><button data-action="comment" data-id="${post.id}">发送</button></div>
     `;
     feed.appendChild(card);
   });
@@ -422,4 +446,8 @@ function safeJson(text) {
   } catch {
     return {};
   }
+}
+
+function createGuestName() {
+  return `游客${Math.floor(1000 + Math.random() * 9000)}`;
 }

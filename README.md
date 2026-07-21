@@ -10,9 +10,8 @@
 
 - 上传账号：`chestnut` / `susususu`
 - 管理员账号：`admin` / `admin123`
-- 游客：不登录状态，仅可浏览内容
-
-> 若需修改账号，请编辑 `backend/data/users.json`（首次启动后自动生成）。
+- 注册用户：可登录、点赞、评论（默认角色 `viewer`）
+- 游客：不登录也可点赞、评论（昵称自动为 `游客####`）
 
 ## 目录结构
 
@@ -21,163 +20,112 @@ chestnut-life/
   backend/
     server.js
     Dockerfile
-    data/
-    uploads/
+    supabase-schema.sql
   frontend/
     index.html
     config.js
     styles.css
     main.js
-  .github/workflows/
-    deploy-frontend-pages.yml
-  render.yaml
 ```
 
-## 功能清单
+## 持久化方案（已实现）
 
-- 登录/退出
-- 角色鉴权（游客只读）
-- 发布图文/视频
-- 动态流瀑布卡片展示
-- 删除权限（作者本人或管理员）
-- 点赞功能（登录用户可点赞/取消）
-- 评论功能（登录用户可评论）
-- 旅行地图页（旅行地点坐标展示）
-- 旅行地点管理（发布者/管理员可新增，作者或管理员可删除）
+后端已支持两种模式：
 
-## 新增接口
+- **云持久化模式（推荐）**
+  - 结构化数据：`Supabase Postgres`
+  - 媒体文件：`Cloudinary`
+- **本地兜底模式（开发时）**
+  - 数据文件：`backend/data/*.json`
+  - 媒体文件：`backend/uploads/*`
 
-- `GET /api/posts`
-- `POST /api/posts/:id/like`
-- `POST /api/posts/:id/comments`
-- `GET /api/travels`
-- `POST /api/travels`
-- `DELETE /api/travels/:id`
+Render 免费实例休眠/重启不会影响 Supabase 和 Cloudinary 的数据，因此内容可持久化。
 
 ---
 
-## 先解决你遇到的 `Failed to fetch`
+## 一次性配置步骤（Render 免费版可用）
 
-这个错误几乎总是因为「前端请求不到后端」。
+### 1) 配置 Supabase（超详细步骤）
 
-### 常见原因
-- 后端没启动
-- 直接双击 `index.html` 用 `file://` 打开（不推荐）
-- `frontend/config.js` 里线上 API 地址没改
+1. 打开 `https://supabase.com` 并登录。
+2. 点击右上角 `New project`。
+3. 选择你的 Organization，填写：
+   - `Project name`（例如 `chestnut-life`）
+   - `Database Password`（自己保存好）
+   - `Region`（选离你近的）
+4. 点击 `Create new project`，等待项目初始化（约1-3分钟）。
+5. 项目创建完成后，左侧菜单点击 `SQL Editor`。
+6. 点击 `New query`。
+7. 在你本地打开文件 `backend/supabase-schema.sql`，复制全部内容。
+8. 把 SQL 粘贴到 Supabase 的编辑器。
+9. 点击右下角 `Run`（或 `Ctrl/Cmd + Enter`）执行。
+10. 看到执行成功提示后，左侧点击 `Table Editor`，确认已经有三张表：
+    - `users`
+    - `posts`
+    - `travels`
+11. 接着左侧点击 `Project Settings -> API`。
+12. 复制并保存以下两个值（后面填 Render 用）：
+    - `Project URL` → 对应 `SUPABASE_URL`
+    - `service_role` key（不是 anon key）→ 对应 `SUPABASE_SERVICE_ROLE_KEY`
 
-### 本地正确启动
+> 注意：`service_role` 权限很高，不要放到前端代码，只能放在 Render 后端环境变量。
 
-1) 启动后端（4000）
+### 2) 配置 Cloudinary
 
-```bash
-cd backend
-npm start
+1. 创建 Cloudinary 账号。
+2. 在 `Settings -> Upload` 创建一个 `Unsigned Upload Preset`。
+3. 获取：
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_UPLOAD_PRESET`
+
+### 3) 配置 Render 环境变量
+
+在 Render 的后端服务里新增：
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_UPLOAD_PRESET`
+
+保存后 `Manual Deploy -> Deploy latest commit`。
+
+### 4) 验证是否启用云持久化
+
+访问后端健康检查：
+
+- `https://你的-render域名/api/health`
+
+看到类似：
+
+```json
+{
+  "ok": true,
+  "persistence": "supabase",
+  "mediaStorage": "cloudinary"
+}
 ```
-
-2) 启动前端静态服务（5500）
-
-```bash
-cd frontend
-python3 -m http.server 5500
-```
-
-3) 浏览器访问
-
-`http://localhost:5500`
 
 ---
 
-## 部署到 GitHub（前端）+ Render（后端）
-
-> 说明：GitHub Pages 只能托管静态前端，不能运行 Node 后端。
-> 所以前后端分离部署的标准方式是：
-> - 前端：GitHub Pages
-> - 后端：Render（或 Railway/Fly.io）
-
-### A. 推送到 GitHub
-
-在项目根目录执行：
-
-```bash
-git init
-git add .
-git commit -m "init chestnut-life"
-git branch -M main
-git remote add origin <你的仓库地址>
-git push -u origin main
-```
-
-### B. 开启 GitHub Pages 自动部署
-
-仓库里已包含工作流：
-- `.github/workflows/deploy-frontend-pages.yml`
-
-在 GitHub 仓库设置中：
-1. 进入 `Settings -> Pages`
-2. `Build and deployment` 选择 `GitHub Actions`
-3. 推送到 `main` 后自动发布
-
-### C. 部署后端到 Render
-
-仓库里已包含：
-- `backend/Dockerfile`
-- `render.yaml`
-
-在 Render：
-1. `New -> Blueprint`
-2. 连接你的 GitHub 仓库
-3. 选择该仓库后创建服务
-4. 部署成功后拿到后端地址，例如：
-   `https://chestnut-life-api.onrender.com`
-
-### D. 绑定前端到线上 API
-
-编辑：`frontend/config.js`
-
-把：
-
-```js
-productionApi: 'https://your-backend-domain.onrender.com/api'
-```
-
-改成你的真实地址，例如：
-
-```js
-productionApi: 'https://chestnut-life-api.onrender.com/api'
-```
-
-然后再次提交并推送：
-
-```bash
-git add frontend/config.js
-git commit -m "config production api"
-git push
-```
-
-GitHub Pages 会自动更新。
-
-### E. 代码更新后如何同步到线上
-
-每次前后端改动后，统一执行：
+## 代码更新后如何同步线上
 
 ```bash
 git add .
-git commit -m "update site"
+git commit -m "update"
 git push
 ```
 
-- 前端同步：`push` 后 GitHub Actions 会自动重新部署 Pages。
-- 后端同步：Render 默认会在仓库更新后自动重新部署（`autoDeploy: true`）。
-- 若 Render 没自动更新，可在 Render 服务页面点击 `Manual Deploy -> Deploy latest commit`。
+- 前端：GitHub Pages 会自动部署。
+- 后端：Render 会自动部署（或手动 Deploy latest commit）。
 
 ---
 
-## Node 环境说明
+## 常见问题
 
-如果终端里能看到 `node -v`，但脚本启动提示找不到 `node`，通常是 `nvm` 尚未在当前 shell 会话加载。
+### 为什么 GitHub 仓库看不到 `backend/data/*.json` 和 `backend/uploads`？
 
-可先执行：
+这些文件是运行时生成的本地文件，不会自动提交到 GitHub，也不适合当成线上持久化方案。
 
-```bash
-export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"
-```
+### Render 免费实例休眠会丢数据吗？
+
+如果你用本地文件会有风险；改成 Supabase + Cloudinary 后，实例休眠不影响数据持久性。

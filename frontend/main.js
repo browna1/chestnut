@@ -29,6 +29,7 @@ const travelRefreshBtn = document.getElementById('travelRefreshBtn');
 const publishTravelBtn = document.getElementById('publishTravelBtn');
 const travelMap = document.getElementById('travelMap');
 const travelList = document.getElementById('travelList');
+let chinaMapChart = null;
 
 const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
@@ -52,6 +53,9 @@ goFeedBtn.addEventListener('click', () => switchPage('feed'));
 goTravelBtn.addEventListener('click', () => switchPage('travel'));
 travelRefreshBtn.addEventListener('click', loadTravels);
 publishTravelBtn.addEventListener('click', publishTravel);
+window.addEventListener('resize', () => {
+  if (chinaMapChart) chinaMapChart.resize();
+});
 
 function syncView() {
   const isAuth = Boolean(state.token);
@@ -161,23 +165,34 @@ async function publishTravel() {
   const place = document.getElementById('travelPlaceInput').value.trim();
   const country = document.getElementById('travelCountryInput').value.trim();
   const date = document.getElementById('travelDateInput').value;
-  const lat = document.getElementById('travelLatInput').value;
-  const lng = document.getElementById('travelLngInput').value;
   const note = document.getElementById('travelNoteInput').value.trim();
 
-  if (!place || !lat || !lng) {
-    alert('地点、纬度、经度必填');
+  if (!place) {
+    alert('请填写省份/城市/区县信息');
+    return;
+  }
+
+  const resolved = resolveChinaLocation(place);
+  if (!resolved) {
+    alert('暂时无法识别该地点，请填写更具体的中国省市区名称（如：四川成都武侯区）');
     return;
   }
 
   const travel = await request('/travels', {
     method: 'POST',
-    body: { place, country, date, lat: Number(lat), lng: Number(lng), note },
+    body: {
+      place,
+      country,
+      date,
+      lat: resolved.lat,
+      lng: resolved.lng,
+      note
+    },
     auth: true
   });
 
   if (!travel) return;
-  ['travelPlaceInput', 'travelCountryInput', 'travelDateInput', 'travelLatInput', 'travelLngInput', 'travelNoteInput']
+  ['travelPlaceInput', 'travelCountryInput', 'travelDateInput', 'travelNoteInput']
     .forEach(id => { document.getElementById(id).value = ''; });
   await loadTravels();
 }
@@ -297,31 +312,18 @@ async function loadTravels() {
   const travels = await request('/travels', { method: 'GET' });
   if (!travels) return;
 
-  travelMap.innerHTML = '';
+  renderChinaMap(travels);
   travelList.innerHTML = '';
 
   travels.forEach(item => {
-    const marker = document.createElement('div');
-    marker.className = 'marker';
-    marker.style.left = `${lngToX(item.lng)}%`;
-    marker.style.top = `${latToY(item.lat)}%`;
-
-    const label = document.createElement('div');
-    label.className = 'marker-label';
-    label.style.left = `${lngToX(item.lng)}%`;
-    label.style.top = `${latToY(item.lat)}%`;
-    label.textContent = item.place;
-
-    travelMap.appendChild(marker);
-    travelMap.appendChild(label);
-
-    const canDelete = state.role === 'admin' || state.username === item.author;
+    const canDelete = state.role === 'admin' || state.username === 'chestnut' || state.username === item.author;
     const div = document.createElement('div');
     div.className = 'travel-item';
     div.innerHTML = `
       <p><strong>${escapeHtml(item.place)}</strong> ${item.country ? `· ${escapeHtml(item.country)}` : ''}</p>
       <p class="meta">${escapeHtml(item.author)}${item.date ? ` · ${escapeHtml(item.date)}` : ''}</p>
       <p>${escapeHtml(item.note || '')}</p>
+      <p class="meta">估算省份：${escapeHtml(guessProvince(item.place))}</p>
       <p class="meta">纬度 ${item.lat}，经度 ${item.lng}</p>
       ${canDelete ? `<button class="ghost" data-travel-delete="${item.id}">删除地点</button>` : ''}
     `;
@@ -397,6 +399,164 @@ function latToY(lat) {
 function lngToX(lng) {
   const value = Number(lng);
   return Math.min(100, Math.max(0, ((value + 180) / 360) * 100));
+}
+
+function renderChinaMap(travels) {
+  if (!window.echarts) {
+    travelMap.innerHTML = '<p class="tip">地图加载失败，请检查网络。</p>';
+    return;
+  }
+
+  if (!chinaMapChart) {
+    chinaMapChart = window.echarts.init(travelMap);
+  }
+
+  const points = travels.map(item => ({
+    name: item.place,
+    value: [Number(item.lng), Number(item.lat), item.place],
+    author: item.author,
+    province: guessProvince(item.place),
+    date: item.date || ''
+  }));
+
+  chinaMapChart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter(params) {
+        const data = params.data || {};
+        if (params.seriesType === 'map') {
+          return `${params.name}`;
+        }
+        return `${data.value?.[2] || data.name}<br/>省份：${data.province || '未知'}<br/>作者：${data.author || ''}${data.date ? `<br/>日期：${data.date}` : ''}`;
+      }
+    },
+    geo: {
+      map: 'china',
+      roam: true,
+      zoom: 1.05,
+      label: {
+        show: true,
+        fontSize: 10,
+        color: '#765846'
+      },
+      itemStyle: {
+        areaColor: '#f9e6d4',
+        borderColor: '#c89573',
+        borderWidth: 1
+      },
+      emphasis: {
+        label: { color: '#6a3a1f' },
+        itemStyle: { areaColor: '#f3c8a7' }
+      }
+    },
+    series: [
+      {
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        symbolSize: 12,
+        itemStyle: {
+          color: '#a54f20'
+        },
+        label: {
+          show: true,
+          formatter: param => param.data?.name || '',
+          position: 'right',
+          fontSize: 11,
+          color: '#5e3f2d',
+          backgroundColor: 'rgba(255,255,255,0.85)',
+          borderRadius: 5,
+          padding: [2, 6]
+        },
+        data: points
+      }
+    ]
+  });
+}
+
+function guessProvince(place) {
+  const text = String(place || '');
+  const provinces = ['北京', '天津', '上海', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '台湾', '内蒙古', '广西', '西藏', '宁夏', '新疆', '香港', '澳门'];
+  const found = provinces.find(name => text.includes(name));
+  return found || '未知';
+}
+
+function resolveChinaLocation(text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+
+  const points = [
+    { key: '北京', lat: 39.9042, lng: 116.4074 },
+    { key: '上海', lat: 31.2304, lng: 121.4737 },
+    { key: '天津', lat: 39.3434, lng: 117.3616 },
+    { key: '重庆', lat: 29.5630, lng: 106.5516 },
+    { key: '杭州', lat: 30.2741, lng: 120.1551 },
+    { key: '西湖', lat: 30.2470, lng: 120.1500 },
+    { key: '宁波', lat: 29.8683, lng: 121.5440 },
+    { key: '温州', lat: 27.9949, lng: 120.6994 },
+    { key: '南京', lat: 32.0603, lng: 118.7969 },
+    { key: '苏州', lat: 31.2990, lng: 120.5853 },
+    { key: '无锡', lat: 31.4912, lng: 120.3119 },
+    { key: '广州', lat: 23.1291, lng: 113.2644 },
+    { key: '深圳', lat: 22.5431, lng: 114.0579 },
+    { key: '珠海', lat: 22.2707, lng: 113.5767 },
+    { key: '佛山', lat: 23.0218, lng: 113.1219 },
+    { key: '东莞', lat: 23.0205, lng: 113.7518 },
+    { key: '中山', lat: 22.5176, lng: 113.3928 },
+    { key: '成都', lat: 30.5728, lng: 104.0668 },
+    { key: '武侯', lat: 30.6414, lng: 104.0431 },
+    { key: '锦江', lat: 30.5987, lng: 104.0838 },
+    { key: '高新', lat: 30.5537, lng: 104.0658 },
+    { key: '西安', lat: 34.3416, lng: 108.9398 },
+    { key: '长沙', lat: 28.2282, lng: 112.9388 },
+    { key: '武汉', lat: 30.5928, lng: 114.3055 },
+    { key: '郑州', lat: 34.7466, lng: 113.6254 },
+    { key: '青岛', lat: 36.0671, lng: 120.3826 },
+    { key: '济南', lat: 36.6512, lng: 117.1201 },
+    { key: '厦门', lat: 24.4798, lng: 118.0894 },
+    { key: '福州', lat: 26.0745, lng: 119.2965 },
+    { key: '昆明', lat: 25.0389, lng: 102.7183 },
+    { key: '贵阳', lat: 26.6470, lng: 106.6302 },
+    { key: '拉萨', lat: 29.6525, lng: 91.1721 },
+    { key: '乌鲁木齐', lat: 43.8256, lng: 87.6168 },
+    { key: '呼和浩特', lat: 40.8427, lng: 111.7492 },
+    { key: '南宁', lat: 22.8170, lng: 108.3669 },
+    { key: '海口', lat: 20.0442, lng: 110.1983 },
+    { key: '三亚', lat: 18.2528, lng: 109.5119 },
+    { key: '香港', lat: 22.3193, lng: 114.1694 },
+    { key: '澳门', lat: 22.1987, lng: 113.5439 },
+    { key: '台北', lat: 25.0330, lng: 121.5654 },
+    { key: '河北', lat: 38.0371, lng: 114.5315 },
+    { key: '山西', lat: 37.8706, lng: 112.5489 },
+    { key: '辽宁', lat: 41.8057, lng: 123.4315 },
+    { key: '吉林', lat: 43.8171, lng: 125.3235 },
+    { key: '黑龙江', lat: 45.8038, lng: 126.5349 },
+    { key: '江苏', lat: 32.0617, lng: 118.7632 },
+    { key: '浙江', lat: 30.2741, lng: 120.1551 },
+    { key: '安徽', lat: 31.8612, lng: 117.2857 },
+    { key: '福建', lat: 26.1008, lng: 119.2951 },
+    { key: '江西', lat: 28.6829, lng: 115.8582 },
+    { key: '山东', lat: 36.6512, lng: 117.1201 },
+    { key: '河南', lat: 34.7466, lng: 113.6254 },
+    { key: '湖北', lat: 30.5928, lng: 114.3055 },
+    { key: '湖南', lat: 28.2282, lng: 112.9388 },
+    { key: '广东', lat: 23.1291, lng: 113.2644 },
+    { key: '海南', lat: 20.0442, lng: 110.1983 },
+    { key: '四川', lat: 30.5728, lng: 104.0668 },
+    { key: '贵州', lat: 26.6470, lng: 106.6302 },
+    { key: '云南', lat: 25.0389, lng: 102.7183 },
+    { key: '陕西', lat: 34.3416, lng: 108.9398 },
+    { key: '甘肃', lat: 36.0611, lng: 103.8343 },
+    { key: '青海', lat: 36.6171, lng: 101.7782 },
+    { key: '台湾', lat: 25.0330, lng: 121.5654 },
+    { key: '内蒙古', lat: 40.8427, lng: 111.7492 },
+    { key: '广西', lat: 22.8170, lng: 108.3669 },
+    { key: '西藏', lat: 29.6525, lng: 91.1721 },
+    { key: '宁夏', lat: 38.4872, lng: 106.2309 },
+    { key: '新疆', lat: 43.8256, lng: 87.6168 }
+  ];
+
+  const hit = points.find(item => value.includes(item.key));
+  return hit ? { lat: hit.lat, lng: hit.lng, key: hit.key } : null;
 }
 
 function fileToBase64(file) {

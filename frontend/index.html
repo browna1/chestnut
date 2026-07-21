@@ -16,10 +16,12 @@
     </div>
     <div class="auth-area">
       <span id="viewerState">当前：游客</span>
-      <button id="goFeedBtn" class="ghost">动态</button>
-      <button id="goTravelBtn" class="ghost">旅行</button>
-      <button id="loginBtn">登录</button>
-      <button id="logoutBtn" class="ghost" hidden>退出</button>
+      <div class="auth-buttons">
+        <button id="goFeedBtn" class="ghost">动态</button>
+        <button id="goTravelBtn" class="ghost">旅行</button>
+        <button id="loginBtn">登录</button>
+        <button id="logoutBtn" class="ghost" hidden>退出</button>
+      </div>
     </div>
   </header>
 
@@ -53,17 +55,16 @@
     <section id="travelPublishSection" hidden>
       <h3>新增旅行地点</h3>
       <div class="form-grid">
-        <input id="travelPlaceInput" placeholder="地点名，如：京都清水寺" />
-        <input id="travelCountryInput" placeholder="国家/地区" />
+        <input id="travelPlaceInput" placeholder="省份/城市/区县（必填），如：浙江杭州西湖区" />
+        <input id="travelCountryInput" placeholder="详细地点（选填），如：西湖断桥" />
         <input id="travelDateInput" type="date" />
-        <input id="travelLatInput" type="number" step="0.000001" placeholder="纬度，如：35.0116" />
-        <input id="travelLngInput" type="number" step="0.000001" placeholder="经度，如：135.7681" />
         <textarea id="travelNoteInput" placeholder="旅行小记..."></textarea>
         <button id="publishTravelBtn">发布旅行地点</button>
       </div>
     </section>
 
     <div id="travelMap" class="travel-map"></div>
+    <p class="tip">地图支持拖动、双指缩放（手机）和滚轮缩放（电脑）。</p>
     <div id="travelList" class="travel-list"></div>
   </section>
 
@@ -83,6 +84,8 @@
   </dialog>
 
   <script src="./config.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/echarts@5/map/js/china.js"></script>
   <script src="./main.js"></script>
 </body>
 </html>

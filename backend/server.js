@@ -525,7 +525,8 @@ async function deleteTravel(res, travelId, auth) {
   }
 
   const canDelete = auth.role === 'admin' || target.author === auth.username;
-  if (!canDelete) {
+  const canDeleteByChestnut = auth.username === 'chestnut';
+  if (!canDelete && !canDeleteByChestnut) {
     sendJson(res, 403, { message: '仅作者或管理员可删除' });
     return;
   }

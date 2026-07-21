@@ -156,6 +156,20 @@ git push
 
 GitHub Pages 会自动更新。
 
+### E. 代码更新后如何同步到线上
+
+每次前后端改动后，统一执行：
+
+```bash
+git add .
+git commit -m "update site"
+git push
+```
+
+- 前端同步：`push` 后 GitHub Actions 会自动重新部署 Pages。
+- 后端同步：Render 默认会在仓库更新后自动重新部署（`autoDeploy: true`）。
+- 若 Render 没自动更新，可在 Render 服务页面点击 `Manual Deploy -> Deploy latest commit`。
+
 ---
 
 ## Node 环境说明

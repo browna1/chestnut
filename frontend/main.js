@@ -1,4 +1,5 @@
 const API = window.__CHESTNUT_CONFIG__?.apiBase || 'http://localhost:4000/api';
+const API_ORIGIN = new URL(API).origin;
 
 const state = {
   token: localStorage.getItem('token') || '',
@@ -109,8 +110,8 @@ async function publishPost() {
   const topic = document.getElementById('topicInput').value.trim();
   const mediaInput = document.getElementById('mediaInput');
 
-  if (!title || !content) {
-    alert('请填写标题和正文');
+  if (!title) {
+    alert('请填写标题');
     return;
   }
 
@@ -321,13 +322,44 @@ function renderMedia(items = []) {
   if (!items.length) return '';
   return items
     .map(item => {
-      const src = `http://localhost:4000${item.url}`;
-      if ((item.type || '').startsWith('video/')) {
+      const src = resolveMediaUrl(item);
+      const type = getMediaType(item);
+      if (type.startsWith('video/')) {
         return `<video class="media" src="${src}" controls></video>`;
       }
       return `<img class="media" src="${src}" alt="post media" />`;
     })
     .join('');
+}
+
+function resolveMediaUrl(item) {
+  if (!item) return '';
+  if (typeof item === 'string') {
+    if (item.startsWith('http://') || item.startsWith('https://')) return item;
+    if (item.startsWith('/uploads/')) return `${API_ORIGIN}${item}`;
+    return `${API_ORIGIN}/uploads/${item}`;
+  }
+
+  if (item.url && (item.url.startsWith('http://') || item.url.startsWith('https://'))) {
+    return item.url;
+  }
+  if (item.url && item.url.startsWith('/')) {
+    return `${API_ORIGIN}${item.url}`;
+  }
+  if (item.url) {
+    return `${API_ORIGIN}/uploads/${item.url}`;
+  }
+  return '';
+}
+
+function getMediaType(item) {
+  if (typeof item === 'object' && item?.type) return item.type;
+  const url = typeof item === 'string' ? item : (item?.url || '');
+  const lower = url.toLowerCase();
+  if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm')) {
+    return 'video/mp4';
+  }
+  return 'image/jpeg';
 }
 
 function latToY(lat) {

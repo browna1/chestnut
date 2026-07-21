@@ -224,6 +224,21 @@ function readPosts() {
   const posts = readJson(POSTS_FILE, []);
   return posts.map(item => ({
     ...item,
+    media: Array.isArray(item.media)
+      ? item.media.map(mediaItem => {
+        if (typeof mediaItem === 'string') {
+          return { url: mediaItem.startsWith('/uploads/') ? mediaItem : `/uploads/${mediaItem}`, type: inferMediaType(mediaItem) };
+        }
+        if (mediaItem && typeof mediaItem === 'object') {
+          return {
+            ...mediaItem,
+            url: String(mediaItem.url || ''),
+            type: mediaItem.type || inferMediaType(mediaItem.url || '')
+          };
+        }
+        return null;
+      }).filter(Boolean)
+      : [],
     likes: Array.isArray(item.likes) ? item.likes : [],
     comments: Array.isArray(item.comments) ? item.comments : []
   }));
@@ -297,8 +312,8 @@ function createPost(res, body, auth) {
   }
 
   const { title, content, location, topic, media } = body;
-  if (!title || !content) {
-    sendJson(res, 400, { message: '标题和正文不能为空' });
+  if (!title) {
+    sendJson(res, 400, { message: '标题不能为空' });
     return;
   }
 
@@ -318,6 +333,14 @@ function createPost(res, body, auth) {
   posts.push(post);
   savePosts(posts);
   sendJson(res, 201, post);
+}
+
+function inferMediaType(name) {
+  const lower = String(name || '').toLowerCase();
+  if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm')) {
+    return 'video/mp4';
+  }
+  return 'image/jpeg';
 }
 
 function deletePost(res, postId, auth) {

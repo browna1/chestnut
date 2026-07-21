@@ -231,14 +231,14 @@ button:hover { transform: translateY(-1px); }
 .china-border {
   fill: none;
   stroke: rgba(122, 77, 49, 0.55);
-  stroke-width: 3.2;
+  stroke-width: 2.1;
   stroke-linejoin: round;
 }
 
 .province-shape {
   fill: transparent;
   stroke: rgba(152, 103, 70, 0.5);
-  stroke-width: 1.2;
+  stroke-width: 0.85;
   transition: fill .25s ease, stroke .25s ease;
 }
 
@@ -249,7 +249,7 @@ button:hover { transform: translateY(-1px); }
 
 .province-label {
   fill: #6e4025;
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 700;
   paint-order: stroke;
   stroke: rgba(255,255,255,.88);

@@ -332,7 +332,11 @@ async function loadTravels() {
   travelList.innerHTML = '';
 
   travels.forEach(item => {
-    const canDelete = state.role === 'admin' || state.username === 'chestnut' || state.username === item.author;
+    const canDelete = Boolean(state.token) && (
+      state.role === 'admin' ||
+      state.username === 'chestnut' ||
+      state.username === item.author
+    );
     const div = document.createElement('div');
     div.className = 'travel-item';
     div.innerHTML = `
@@ -445,10 +449,24 @@ async function renderStaticChinaMap(travels) {
 
   const projected = projectGeoFeatures(geo.features, 1000, 710, 22);
 
+  const activeLabels = projected.paths
+    .filter(item => visitedProvinces.has(normalizeProvinceName(item.name)))
+    .map(item => ({
+      key: normalizeProvinceName(item.name),
+      text: item.shortName,
+      x: item.labelX,
+      y: item.labelY
+    }));
+
+  const adjustedLabels = resolveLabelOverlap(activeLabels);
+  const labelMap = new Map(adjustedLabels.map(item => [item.key, item]));
+
   const provincePaths = projected.paths.map(item => {
     const active = visitedProvinces.has(normalizeProvinceName(item.name));
+    const key = normalizeProvinceName(item.name);
+    const adjusted = labelMap.get(key);
     const label = active
-      ? `<text class="province-label" x="${item.labelX.toFixed(1)}" y="${item.labelY.toFixed(1)}">${escapeHtml(item.shortName)}</text>`
+      ? `<text class="province-label" x="${(adjusted?.x ?? item.labelX).toFixed(1)}" y="${(adjusted?.y ?? item.labelY).toFixed(1)}">${escapeHtml(item.shortName)}</text>`
       : '';
     return `
       <g class="province-group">
@@ -574,8 +592,40 @@ function normalizeProvinceName(name) {
   return shortProvinceName(name).trim();
 }
 
+function resolveLabelOverlap(labels) {
+  const items = labels.map(item => ({ ...item }));
+  const minDist = 36;
+
+  for (let round = 0; round < 12; round += 1) {
+    for (let i = 0; i < items.length; i += 1) {
+      for (let j = i + 1; j < items.length; j += 1) {
+        const a = items[i];
+        const b = items[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.0001;
+        if (dist >= minDist) continue;
+
+        const push = (minDist - dist) / 2;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        a.x -= ux * push;
+        a.y -= uy * push;
+        b.x += ux * push;
+        b.y += uy * push;
+      }
+    }
+  }
+
+  return items.map(item => ({
+    ...item,
+    x: Math.max(40, Math.min(960, item.x)),
+    y: Math.max(40, Math.min(670, item.y))
+  }));
+}
+
 const LABEL_OVERRIDES = {
-  海南: [608, 560]
+  海南: [564, 494]
 };
 
 function guessProvince(place) {

@@ -36,6 +36,7 @@ const loginDialog = document.getElementById('loginDialog');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
 const cancelLoginBtn = document.getElementById('cancelLoginBtn');
 const registerBtn = document.getElementById('registerBtn');
+const toast = document.getElementById('toast');
 
 let currentPage = 'feed';
 
@@ -50,14 +51,8 @@ confirmLoginBtn.addEventListener('click', login);
 registerBtn.addEventListener('click', register);
 publishBtn.addEventListener('click', publishPost);
 refreshBtn.addEventListener('click', loadPosts);
-goFeedBtn.addEventListener('click', async () => {
-  switchPage('feed');
-  await loadPosts();
-});
-goTravelBtn.addEventListener('click', async () => {
-  switchPage('travel');
-  await loadTravels();
-});
+goFeedBtn.addEventListener('click', () => switchPage('feed'));
+goTravelBtn.addEventListener('click', () => switchPage('travel'));
 travelRefreshBtn.addEventListener('click', loadTravels);
 publishTravelBtn.addEventListener('click', publishTravel);
 window.addEventListener('resize', () => {
@@ -69,13 +64,14 @@ switchPage(currentPage);
 function syncView() {
   const isAuth = Boolean(state.token);
   const canPublish = ['uploader', 'admin'].includes(state.role);
-  viewerState.textContent = isAuth
-    ? `当前：${state.username}（${state.role}）`
-    : `当前：${state.guestName}`;
+  const displayName = isAuth ? state.username : state.guestName;
+  viewerState.textContent = displayName === 'chestnut'
+    ? '🌰今天过得怎么样？'
+    : `欢迎${displayName}来🌰家看看`;
   loginBtn.hidden = isAuth;
   logoutBtn.hidden = !isAuth;
-  publishSection.hidden = !canPublish;
-  travelPublishSection.hidden = !canPublish;
+  publishSection.hidden = !canPublish || currentPage !== 'feed';
+  travelPublishSection.hidden = !canPublish || currentPage !== 'travel';
 }
 
 function switchPage(name) {
@@ -84,6 +80,12 @@ function switchPage(name) {
   travelPage.hidden = name !== 'travel';
   goFeedBtn.classList.toggle('active-tab', name === 'feed');
   goTravelBtn.classList.toggle('active-tab', name === 'travel');
+  syncView();
+  if (name === 'feed') {
+    loadPosts();
+  } else {
+    loadTravels();
+  }
   if (name === 'travel') {
     setTimeout(() => {
       if (chinaMapChart) chinaMapChart.resize();
@@ -108,6 +110,7 @@ async function login() {
   localStorage.setItem('token', state.token);
   localStorage.setItem('username', state.username);
   localStorage.setItem('role', state.role);
+  showToast(state.username === 'chestnut' ? '欢迎🌰回家！' : '在🌰家留下你的足迹！');
   loginDialog.close();
   syncView();
   if (currentPage === 'feed') loadPosts();
@@ -766,4 +769,19 @@ function safeJson(text) {
 
 function createGuestName() {
   return `游客${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+let toastTimer = null;
+function showToast(message) {
+  if (!toast) return;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+
+  toast.textContent = message;
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2000);
 }

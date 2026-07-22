@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Chestnut's Life</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌰</text></svg>">
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -15,12 +16,14 @@
       <p>猫咪、生活、旅行的栗子色日记</p>
     </div>
     <div class="auth-area">
-      <span id="viewerState">当前：游客</span>
+      <div class="auth-head">
+        <span id="viewerState">当前：游客</span>
+        <button id="loginBtn">登录</button>
+        <button id="logoutBtn" class="ghost" hidden>退出</button>
+      </div>
       <div class="auth-buttons">
         <button id="goFeedBtn" class="ghost">动态</button>
         <button id="goTravelBtn" class="ghost">旅行</button>
-        <button id="loginBtn">登录</button>
-        <button id="logoutBtn" class="ghost" hidden>退出</button>
       </div>
     </div>
   </header>
@@ -35,7 +38,7 @@
       <input id="mediaInput" type="file" multiple accept="image/*,video/*" />
       <button id="publishBtn">发布内容</button>
     </div>
-    <p class="tip">支持图片和视频。`chestnut` 与管理员可发布与删除全部帖子。</p>
+    <p class="tip">支持图片和视频。只有 `chestnut` 可管理帖子。</p>
   </section>
 
   <main id="feedPage">
@@ -46,21 +49,21 @@
     <section id="feed" class="feed"></section>
   </main>
 
+  <section id="travelPublishSection" class="card" hidden>
+    <h3>新增旅行地点</h3>
+    <div class="form-grid">
+      <input id="travelPlaceInput" placeholder="省份/城市/区县（必填），如：浙江杭州西湖区" />
+      <input id="travelCountryInput" placeholder="详细地点（选填），如：西湖断桥" />
+      <input id="travelDateInput" type="date" />
+      <textarea id="travelNoteInput" placeholder="旅行小记..."></textarea>
+      <button id="publishTravelBtn">发布旅行地点</button>
+    </div>
+  </section>
+
   <section id="travelPage" class="card" hidden>
     <section class="feed-title">
       <h2>旅行地图</h2>
       <button id="travelRefreshBtn" class="ghost">刷新地点</button>
-    </section>
-
-    <section id="travelPublishSection" hidden>
-      <h3>新增旅行地点</h3>
-      <div class="form-grid">
-        <input id="travelPlaceInput" placeholder="省份/城市/区县（必填），如：浙江杭州西湖区" />
-        <input id="travelCountryInput" placeholder="详细地点（选填），如：西湖断桥" />
-        <input id="travelDateInput" type="date" />
-        <textarea id="travelNoteInput" placeholder="旅行小记..."></textarea>
-        <button id="publishTravelBtn">发布旅行地点</button>
-      </div>
     </section>
 
     <div id="travelMap" class="travel-map"></div>
@@ -69,18 +72,17 @@
 
   <dialog id="loginDialog" class="ios-dialog">
     <div class="dialog-shell">
-      <h3>欢迎回来</h3>
-      <p class="dialog-sub">登录或注册后可管理你的内容</p>
-      <input id="usernameInput" placeholder="用户名" />
-      <input id="passwordInput" type="password" placeholder="密码" />
+      <input id="usernameInput" placeholder="用户名（3-20位，字母/数字/下划线）" />
+      <input id="passwordInput" type="password" placeholder="密码（至少7位且含字母+数字）" />
       <div class="dialog-actions">
         <button id="confirmLoginBtn">登录</button>
         <button id="registerBtn" class="ghost">注册</button>
+        <button id="cancelLoginBtn" class="ghost dialog-cancel">取消</button>
       </div>
-      <button id="cancelLoginBtn" class="ghost dialog-cancel">取消</button>
-      <p class="tip">用户名3-20位（字母/数字/下划线），密码至少7位且含字母+数字。</p>
     </div>
   </dialog>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="./config.js"></script>
   <script src="./main.js"></script>
